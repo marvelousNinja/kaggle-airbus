@@ -59,10 +59,12 @@ class Unet(torch.nn.Module):
         x3, x = self.enc_3(x)
         x4, x = self.enc_4(x)
         x, _ = self.enc_5(x)
-
         x = self.dec_1(x4, x)
+        del x4
         x = self.dec_2(x3, x)
+        del x3
         x = self.dec_3(x2, x)
+        del x2
         x = self.dec_4(x1, x)
+        del x1
         return self.final_conv(x)
-

@@ -8,7 +8,8 @@ from tqdm import tqdm
 
 from airbus.generators import get_train_generator
 from airbus.generators import get_validation_generator
-from airbus.models import Unet
+#from airbus.models import ENet
+from airbus.linknet import Linknet
 from airbus.training import fit_model
 from airbus.utils import as_cuda
 
@@ -17,7 +18,7 @@ def compute_loss(logits, labels):
 
 def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
     np.random.seed(1991)
-    model = Unet()
+    model = Linknet(2)
     model = as_cuda(model)
     optimizer = torch.optim.SGD(filter(lambda param: param.requires_grad, model.parameters()), lr, momentum=.95, nesterov=True)
 
