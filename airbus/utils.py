@@ -21,13 +21,7 @@ def read_image(path):
     return cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
 
 def normalize(image):
-    image = image.astype(np.float32)
-    image /= 255
-    mean = [0.485, 0.456, 0.406]
-    std = [0.229, 0.224, 0.225]
-    image -= mean
-    image /= std
-    return image
+    return (image.astype(np.float32) / 255 - [0.485, 0.456, 0.406]) / [0.229, 0.224, 0.225]
 
 def channels_first(image):
     return np.moveaxis(image, 2, 0)

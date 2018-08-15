@@ -48,11 +48,7 @@ class Linknet(torch.nn.Module):
         x3 = self.resnet.layer3(x2)
         x4 = self.resnet.layer4(x3)
         x = self.decoder1(x4) + x3
-        del x3
-        del x4
         x = self.decoder2(x) + x2
-        del x2
         x = self.decoder3(x) + x1
-        del x1
         x = self.decoder4(x)
         return self.classifier(x)
