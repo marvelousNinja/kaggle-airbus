@@ -8,7 +8,6 @@ from tqdm import tqdm
 
 from airbus.generators import get_train_generator
 from airbus.generators import get_validation_generator
-#from airbus.models import ENet
 from airbus.linknet import Linknet
 from airbus.training import fit_model
 from airbus.utils import as_cuda
@@ -17,6 +16,7 @@ def compute_loss(logits, labels):
     return torch.nn.functional.cross_entropy(logits, labels.long())
 
 def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
+    torch.backends.cudnn.benchmark = True
     np.random.seed(1991)
     model = Linknet(2)
     model = as_cuda(model)
@@ -34,7 +34,7 @@ def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
 def prof():
     import profile
     import pstats
-    profile.run('fit()', 'fit.profile')
+    profile.run('fit(batch_size=4, limit=100, num_epochs=1)', 'fit.profile')
     stats = pstats.Stats('fit.profile')
     stats.sort_stats('cumulative').print_stats(30)
     import pdb; pdb.set_trace()

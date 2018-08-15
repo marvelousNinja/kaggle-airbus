@@ -67,9 +67,11 @@ def as_cuda(tensor):
         return tensor.cuda()
     return tensor
 
-def from_numpy(obj, dtype=np.float32):
-    tensor = torch.Tensor(torch.from_numpy(obj.astype(dtype)))
-    return as_cuda(tensor)
+def from_numpy(obj):
+    if torch.cuda.is_available():
+        return torch.cuda.FloatTensor(obj)
+    else:
+        return torch.FloatTensor(obj)
 
 def to_numpy(tensor):
     return tensor.data.cpu().numpy()
