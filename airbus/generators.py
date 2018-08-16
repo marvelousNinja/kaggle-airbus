@@ -48,7 +48,7 @@ class DataGenerator:
 
 def get_validation_generator(batch_size, limit=None):
     mask_db = get_mask_db('data/train_ship_segmentations.csv')
-    images_with_ships = mask_db[mask_db['EncodedPixels'].notnull()]['ImageId'].unique().values
+    images_with_ships = mask_db[mask_db['EncodedPixels'].notnull()]['ImageId'].unique()
     image_paths = 'data/train/' + images_with_ships
     _, image_paths, _ = get_train_validation_holdout_split(image_paths)
     transform = partial(pipeline, mask_db)
@@ -56,7 +56,7 @@ def get_validation_generator(batch_size, limit=None):
 
 def get_train_generator(batch_size, limit=None):
     mask_db = get_mask_db('data/train_ship_segmentations.csv')
-    images_with_ships = mask_db[mask_db['EncodedPixels'].notnull()]['ImageId'].unique().values
+    images_with_ships = mask_db[mask_db['EncodedPixels'].notnull()]['ImageId'].unique()
     image_paths = 'data/train/' + images_with_ships
     image_paths, _, _ = get_train_validation_holdout_split(image_paths)
     mask_db = get_mask_db('data/train_ship_segmentations.csv')

@@ -5,6 +5,9 @@ import cv2
 import numpy as np
 import pandas as pd
 import torch
+from skimage.morphology import dilation
+from skimage.morphology import square
+from skimage.morphology import watershed
 
 def get_train_validation_holdout_split(records):
     np.random.shuffle(records)
@@ -40,11 +43,35 @@ def decode_rle_mask(shape, encoded_mask):
 
 def load_mask(mask_db, shape, image_path):
     image_id = image_path.split('/')[-1]
-    encoded_mask = ' '.join(mask_db[mask_db['ImageId'] == image_id]['EncodedPixels'].fillna('nan').values)
-    return decode_rle_mask(shape, encoded_mask)
+    i = 1
+    labelled_mask = np.zeros(shape)
+    for encoded_mask in mask_db[mask_db['ImageId'] == image_id]['EncodedPixels'].fillna('nan'):
+        mask = decode_rle_mask(shape, encoded_mask)
+        labelled_mask[mask > 0] = i
+        i += 1
 
-def combine_masks(masks):
-    return np.clip(sum(masks), a_min=0, a_max=1)
+    return label_touching_borders(labelled_mask)
+
+def label_touching_borders(labelled_mask):
+    # 0 = background, 1 = ships, 2 = touching borders
+    dilated = dilation(labelled_mask > 0, square(9))
+    after_watershed = watershed(dilated, labelled_mask, mask=dilated, watershed_line=True) > 0
+    watershed_line = dilated ^ after_watershed
+    watershed_line = dilation(watershed_line, square(7))
+    mask = np.zeros(labelled_mask.shape, dtype=np.uint8)
+    mask[labelled_mask > 0] = 1
+    for (x, y) in np.argwhere(watershed_line):
+        diff = 1 if mask[x, y] > 0 else 3
+        x_lo = np.clip(x - diff, 0, labelled_mask.shape[0])
+        y_lo = np.clip(y - diff, 0, labelled_mask.shape[1])
+        x_hi = np.clip(x + diff + 1, 0, labelled_mask.shape[0])
+        y_hi = np.clip(y + diff + 1, 0, labelled_mask.shape[1])
+        around = labelled_mask[x_lo:x_hi, y_lo:y_hi]
+        around = around[around > 0]
+        num_instances = len(np.unique(around))
+        if num_instances < 2: continue
+        mask[x, y] = 2
+    return mask
 
 def pipeline(mask_db, path):
     image = read_image(path)
@@ -54,10 +81,9 @@ def pipeline(mask_db, path):
 
     images = []
     masks = []
-    for i in range(3):
-        for j in range(3):
-            images.append(image[:, i * 256: i * 256 + 256])
-            masks.append(mask[i * 256: i * 256 + 256])
+    for i, j in zip(range(3), range(3)):
+        images.append(image[:, i * 256: j * 256 + 256])
+        masks.append(mask[i * 256: j * 256 + 256])
     return images, masks
 
 def get_mask_db(path):
