@@ -43,17 +43,21 @@ class DataGenerator:
             yield map(np.stack, split_outputs)
 
     def __len__(self):
-        return math.ceil(len(self.records) / self.batch_size)
+        # TODO AS: 9 patches per image. Clean this up
+        return math.ceil(len(self.records) / self.batch_size) * 9
 
 def get_validation_generator(batch_size, limit=None):
-    image_paths = get_images_in('data/train')
-    _, image_paths, _ = get_train_validation_holdout_split(image_paths)
     mask_db = get_mask_db('data/train_ship_segmentations.csv')
+    images_with_ships = mask_db[mask_db['EncodedPixels'].notnull()]['ImageId'].unique().values
+    image_paths = 'data/train/' + images_with_ships
+    _, image_paths, _ = get_train_validation_holdout_split(image_paths)
     transform = partial(pipeline, mask_db)
     return DataGenerator(image_paths[:limit], batch_size, transform)
 
 def get_train_generator(batch_size, limit=None):
-    image_paths = get_images_in('data/train')
+    mask_db = get_mask_db('data/train_ship_segmentations.csv')
+    images_with_ships = mask_db[mask_db['EncodedPixels'].notnull()]['ImageId'].unique().values
+    image_paths = 'data/train/' + images_with_ships
     image_paths, _, _ = get_train_validation_holdout_split(image_paths)
     mask_db = get_mask_db('data/train_ship_segmentations.csv')
     transform = partial(pipeline, mask_db)

@@ -18,7 +18,7 @@ def compute_loss(logits, labels):
 def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
     torch.backends.cudnn.benchmark = True
     np.random.seed(1991)
-    model = Linknet(2)
+    model = Linknet(3)
     model = as_cuda(model)
     optimizer = torch.optim.SGD(filter(lambda param: param.requires_grad, model.parameters()), lr, momentum=.95, nesterov=True)
 
