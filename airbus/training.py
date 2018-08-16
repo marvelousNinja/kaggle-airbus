@@ -10,7 +10,8 @@ def fit_model(
         validation_generator,
         optimizer,
         loss_fn,
-        num_epochs
+        num_epochs,
+        after_validation=None
     ):
 
     for _ in tqdm(range(num_epochs)):
@@ -36,5 +37,7 @@ def fit_model(
             # TODO AS: Ignore warning on .item() - it's too slow
             val_loss += loss_fn(outputs, gt).data[0]
         val_loss /= num_batches
+
+        if after_validation: after_validation(val_loss)
 
         tqdm.write(f'train loss {train_loss:.5f} - val loss {val_loss:.5f}')

@@ -9,11 +9,15 @@ from tqdm import tqdm
 from airbus.generators import get_train_generator
 from airbus.generators import get_validation_generator
 from airbus.linknet import Linknet
+from airbus.model_checkpoint import ModelCheckpoint
 from airbus.training import fit_model
 from airbus.utils import as_cuda
 
 def compute_loss(logits, labels):
     return torch.nn.functional.cross_entropy(logits, labels.long())
+
+def after_validation(model_checkpoint, val_loss):
+    model_checkpoint.step(val_loss)
 
 def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
     torch.backends.cudnn.benchmark = True
@@ -21,6 +25,7 @@ def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
     model = Linknet(3)
     model = as_cuda(model)
     optimizer = torch.optim.SGD(filter(lambda param: param.requires_grad, model.parameters()), lr, momentum=.95, nesterov=True)
+    model_checkpoint = ModelCheckpoint(model, 'linknet', tqdm.write)
 
     fit_model(
         model=model,
@@ -28,7 +33,8 @@ def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
         validation_generator=get_validation_generator(batch_size, limit),
         optimizer=optimizer,
         loss_fn=compute_loss,
-        num_epochs=num_epochs
+        num_epochs=num_epochs,
+        after_validation=partial(after_validation, model_checkpoint)
     )
 
 def prof():
