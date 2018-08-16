@@ -9,23 +9,34 @@ from airbus.utils import get_train_validation_holdout_split
 from airbus.utils import pipeline
 
 class DataGenerator:
-    def __init__(self, records, batch_size, transform, shuffle=True):
+    def __init__(self, records, batch_size, transform, batched_pipeline=True, shuffle=True):
         self.records = records
         self.batch_size = batch_size
         self.transform = transform
         self.shuffle = shuffle
+        self.batched_pipeline = batched_pipeline
 
     def __iter__(self):
         if self.shuffle: np.random.shuffle(self.records)
         batch = []
 
         for output in map(self.transform, self.records):
-            batch.append(output)
-
-            if len(batch) >= self.batch_size:
-                split_outputs = list(zip(*batch))
-                yield map(np.stack, split_outputs)
-                batch = []
+            # TODO AS: Infer this? Or force pipeline to always return array
+            if self.batched_pipeline:
+                batched_output = output
+                for output in zip(*batched_output):
+                    batch.append(output)
+                    if len(batch) >= self.batch_size:
+                        split_outputs = list(zip(*batch))
+                        yield map(np.stack, split_outputs)
+                        batch = []
+            else:
+                batch.append(output)
+                if len(batch) >= self.batch_size:
+                    split_outputs = list(zip(*batch))
+                    import pdb; pdb.set_trace()
+                    yield map(np.stack, split_outputs)
+                    batch = []
 
         if len(batch) > 0:
             split_outputs = list(zip(*batch))

@@ -27,31 +27,38 @@ def channels_first(image):
     return np.moveaxis(image, 2, 0)
 
 def decode_rle_mask(shape, encoded_mask):
-    if str(encoded_mask) == 'nan': return np.zeros(shape)
+    if encoded_mask == 'nan': return np.zeros(shape)
     numbers = np.array(list(map(int, encoded_mask.split())))
     starts, lengths = numbers[::2], numbers[1::2]
     # Enumerates from 1
     starts -= 1
     ends = starts + lengths
     mask = np.zeros(shape[0] * shape[1], dtype=np.uint8)
-    for start, end in zip(starts, ends): mask[start:end] = 1
+    for start, end in zip(starts, ends): mask[start:end] += 1
+    mask = np.clip(mask, a_min=0, a_max=2)
     return mask.reshape(shape).T
 
-def load_masks(mask_db, shape, image_path):
+def load_mask(mask_db, shape, image_path):
     image_id = image_path.split('/')[-1]
-    masks = mask_db[mask_db['ImageId'] == image_id]['EncodedPixels'].values
-    return np.array(list(map(partial(decode_rle_mask, shape), masks)))
+    encoded_mask = ' '.join(mask_db[mask_db['ImageId'] == image_id]['EncodedPixels'].fillna('nan').values)
+    return decode_rle_mask(shape, encoded_mask)
 
 def combine_masks(masks):
     return np.clip(sum(masks), a_min=0, a_max=1)
 
 def pipeline(mask_db, path):
     image = read_image(path)
-    masks = load_masks(mask_db, image.shape[0:2], path)
-    mask = combine_masks(masks)
     image = normalize(image)
     image = channels_first(image)
-    return image, mask
+    mask = load_mask(mask_db, image.shape[1:], path)
+
+    images = []
+    masks = []
+    for i in range(3):
+        for j in range(3):
+            images.append(image[:, i * 256: i * 256 + 256])
+            masks.append(mask[i * 256: i * 256 + 256])
+    return images, masks
 
 def get_mask_db(path):
     return pd.read_csv(path)
