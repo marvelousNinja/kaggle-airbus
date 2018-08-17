@@ -4,6 +4,7 @@ import torch
 import torchvision
 import numpy as np
 from fire import Fire
+from tabulate import tabulate
 from tqdm import tqdm
 
 from airbus.generators import get_train_generator
@@ -12,11 +13,16 @@ from airbus.linknet import Linknet
 from airbus.model_checkpoint import ModelCheckpoint
 from airbus.training import fit_model
 from airbus.utils import as_cuda
+from airbus.utils import confusion_matrix
+from airbus.utils import to_numpy
 
 def compute_loss(logits, labels):
     return torch.nn.functional.cross_entropy(logits, labels.long())
 
-def after_validation(model_checkpoint, val_loss):
+def after_validation(model_checkpoint, logits, labels, val_loss):
+    preds = to_numpy(logits.argmax(dim=1)).astype(np.uint8)
+    gt = to_numpy(labels).astype(np.uint8)
+    tqdm.write(confusion_matrix(preds, gt, [0, 1, 2]))
     model_checkpoint.step(val_loss)
 
 def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):

@@ -34,7 +34,6 @@ class DataGenerator:
                 batch.append(output)
                 if len(batch) >= self.batch_size:
                     split_outputs = list(zip(*batch))
-                    import pdb; pdb.set_trace()
                     yield map(np.stack, split_outputs)
                     batch = []
 

@@ -38,6 +38,6 @@ def fit_model(
             val_loss += loss_fn(outputs, gt).data[0]
         val_loss /= num_batches
 
-        if after_validation: after_validation(val_loss)
+        if after_validation: after_validation(outputs, gt, val_loss)
 
         tqdm.write(f'train loss {train_loss:.5f} - val loss {val_loss:.5f}')

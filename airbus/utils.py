@@ -1,5 +1,6 @@
 import glob
 from functools import partial
+from itertools import product
 
 import cv2
 import numpy as np
@@ -8,6 +9,7 @@ import torch
 from skimage.morphology import dilation
 from skimage.morphology import square
 from skimage.morphology import watershed
+from tabulate import tabulate
 
 def get_train_validation_holdout_split(records):
     np.random.shuffle(records)
@@ -81,10 +83,25 @@ def pipeline(mask_db, path):
 
     images = []
     masks = []
-    for i, j in zip(range(3), range(3)):
-        images.append(image[:, i * 256: j * 256 + 256])
-        masks.append(mask[i * 256: j * 256 + 256])
+    for i, j in product(range(3), range(3)):
+        images.append(image[:, i * 256:i * 256 + 256, j * 256:j * 256 + 256])
+        masks.append(mask[i * 256:i * 256 + 256, j * 256:j * 256 + 256])
     return images, masks
+
+def confusion_matrix(pred_labels, true_labels, labels):
+    pred_labels = pred_labels.reshape(-1)
+    true_labels = true_labels.reshape(-1)
+    columns = [list(map(lambda label: f'Pred {label}', labels))]
+    for true_label in labels:
+        counts = []
+        preds_for_label = pred_labels[np.argwhere(true_labels == true_label)]
+        for predicted_label in labels:
+            counts.append((preds_for_label == predicted_label).sum())
+        columns.append(counts)
+
+    headers = list(map(lambda label: f'True {label}', labels))
+    rows = np.column_stack(columns)
+    return tabulate(rows, headers, 'grid')
 
 def get_mask_db(path):
     return pd.read_csv(path)
