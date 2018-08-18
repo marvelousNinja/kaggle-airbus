@@ -45,48 +45,18 @@ def decode_rle_mask(shape, encoded_mask):
 
 def load_mask(mask_db, shape, image_path):
     image_id = image_path.split('/')[-1]
-    i = 1
     labelled_mask = np.zeros(shape)
     for encoded_mask in mask_db[mask_db['ImageId'] == image_id]['EncodedPixels'].fillna('nan'):
-        mask = decode_rle_mask(shape, encoded_mask)
-        labelled_mask[mask > 0] = i
-        i += 1
-
-    return label_touching_borders(labelled_mask)
-
-def label_touching_borders(labelled_mask):
-    # 0 = background, 1 = ships, 2 = touching borders
-    dilated = dilation(labelled_mask > 0, square(9))
-    after_watershed = watershed(dilated, labelled_mask, mask=dilated, watershed_line=True) > 0
-    watershed_line = dilated ^ after_watershed
-    watershed_line = dilation(watershed_line, square(7))
-    mask = np.zeros(labelled_mask.shape, dtype=np.uint8)
-    mask[labelled_mask > 0] = 1
-    for (x, y) in np.argwhere(watershed_line):
-        diff = 1 if mask[x, y] > 0 else 3
-        x_lo = np.clip(x - diff, 0, labelled_mask.shape[0])
-        y_lo = np.clip(y - diff, 0, labelled_mask.shape[1])
-        x_hi = np.clip(x + diff + 1, 0, labelled_mask.shape[0])
-        y_hi = np.clip(y + diff + 1, 0, labelled_mask.shape[1])
-        around = labelled_mask[x_lo:x_hi, y_lo:y_hi]
-        around = around[around > 0]
-        num_instances = len(np.unique(around))
-        if num_instances < 2: continue
-        mask[x, y] = 2
-    return mask
+        labelled_mask += decode_rle_mask(shape, encoded_mask)
+    labelled_mask[labelled_mask > 0] = 1
+    return labelled_mask
 
 def pipeline(mask_db, path):
     image = read_image(path)
     image = normalize(image)
     image = channels_first(image)
     mask = load_mask(mask_db, image.shape[1:], path)
-
-    images = []
-    masks = []
-    for i, j in product(range(3), range(3)):
-        images.append(image[:, i * 256:i * 256 + 256, j * 256:j * 256 + 256])
-        masks.append(mask[i * 256:i * 256 + 256, j * 256:j * 256 + 256])
-    return images, masks
+    return image, mask
 
 def confusion_matrix(pred_labels, true_labels, labels):
     pred_labels = pred_labels.reshape(-1)

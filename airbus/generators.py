@@ -9,7 +9,7 @@ from airbus.utils import get_train_validation_holdout_split
 from airbus.utils import pipeline
 
 class DataGenerator:
-    def __init__(self, records, batch_size, transform, batched_pipeline=True, shuffle=True):
+    def __init__(self, records, batch_size, transform, batched_pipeline=False, shuffle=True):
         self.records = records
         self.batch_size = batch_size
         self.transform = transform
@@ -43,7 +43,7 @@ class DataGenerator:
 
     def __len__(self):
         # TODO AS: 9 patches per image. Clean this up
-        return math.ceil(len(self.records) / self.batch_size) * 9
+        return math.ceil(len(self.records) / self.batch_size)
 
 def get_validation_generator(batch_size, limit=None):
     mask_db = get_mask_db('data/train_ship_segmentations.csv')

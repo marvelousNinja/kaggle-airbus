@@ -1,10 +1,8 @@
 from functools import partial
 
 import torch
-import torchvision
 import numpy as np
 from fire import Fire
-from tabulate import tabulate
 from tqdm import tqdm
 
 from airbus.generators import get_train_generator
@@ -16,35 +14,22 @@ from airbus.utils import as_cuda
 from airbus.utils import confusion_matrix
 from airbus.utils import to_numpy
 
-def generalized_dice_loss(logits, labels):
-    labels = labels.long()
-    present_labels = labels.unique()
-    probs = torch.nn.functional.softmax(logits, dim=1)
-    loss = 0
-    for label in present_labels:
-        pred_probs = probs[:, label, :, :]
-        true_labels = (labels == label).float()
-        label_weight = 1 / (true_labels.sum() + 1)**2
-        numerator = label_weight * (pred_probs * true_labels).sum((1, 2))
-        denominator = label_weight * (pred_probs.sum((1, 2)) + true_labels.sum((1, 2)))
-        loss += (1 - 2 * numerator / denominator) / len(present_labels)
-    return loss
-
 def compute_loss(logits, labels):
-    return generalized_dice_loss(logits, labels)
+    return torch.nn.functional.cross_entropy(logits, labels.long())
 
 def after_validation(model_checkpoint, logits, labels, val_loss):
     preds = to_numpy(logits.argmax(dim=1)).astype(np.uint8)
     gt = to_numpy(labels).astype(np.uint8)
-    tqdm.write(confusion_matrix(preds, gt, [0, 1, 2]))
-    model_checkpoint.step(val_loss)
+    tqdm.write(confusion_matrix(preds, gt, [0, 1]))
+    # TODO AS: Save best only
+    # model_checkpoint.step(val_loss)
 
 def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
     torch.backends.cudnn.benchmark = True
     np.random.seed(1991)
-    model = Linknet(3)
+    model = Linknet(2)
     model = as_cuda(model)
-    optimizer = torch.optim.SGD(filter(lambda param: param.requires_grad, model.parameters()), lr, momentum=.95, nesterov=True)
+    optimizer = torch.optim.Adam(filter(lambda param: param.requires_grad, model.parameters()), lr)
     model_checkpoint = ModelCheckpoint(model, 'linknet', tqdm.write)
 
     fit_model(
