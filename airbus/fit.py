@@ -16,8 +16,22 @@ from airbus.utils import as_cuda
 from airbus.utils import confusion_matrix
 from airbus.utils import to_numpy
 
+def generalized_dice_loss(logits, labels):
+    labels = labels.long()
+    present_labels = labels.unique()
+    probs = torch.nn.functional.softmax(logits, dim=1)
+    loss = 0
+    for label in present_labels:
+        pred_probs = probs[:, label, :, :]
+        true_labels = (labels == label).float()
+        label_weight = 1 / (true_labels.sum() + 1)**2
+        numerator = label_weight * (pred_probs * true_labels).sum((1, 2))
+        denominator = label_weight * (pred_probs.sum((1, 2)) + true_labels.sum((1, 2)))
+        loss += (1 - 2 * numerator / denominator) / len(present_labels)
+    return loss
+
 def compute_loss(logits, labels):
-    return torch.nn.functional.cross_entropy(logits, labels.long())
+    return generalized_dice_loss(logits, labels)
 
 def after_validation(model_checkpoint, logits, labels, val_loss):
     preds = to_numpy(logits.argmax(dim=1)).astype(np.uint8)
