@@ -14,15 +14,23 @@ from airbus.utils import as_cuda
 from airbus.utils import confusion_matrix
 from airbus.utils import to_numpy
 
+def dice_loss(logits, labels):
+    probs = torch.nn.functional.softmax(logits, dim=1)
+    probs = probs[:, 1, :, :]
+    labels = labels.float()
+    intersection = (probs * labels).sum((1, 2))
+    pred_volume = probs.sum((1, 2))
+    true_volume = labels.sum((1, 2))
+    return (1 - 2 * intersection / (pred_volume + true_volume)).mean()
+
 def compute_loss(logits, labels):
-    return torch.nn.functional.cross_entropy(logits, labels.long())
+    return dice_loss(logits, labels)
 
 def after_validation(model_checkpoint, logits, labels, val_loss):
     preds = to_numpy(logits.argmax(dim=1)).astype(np.uint8)
     gt = to_numpy(labels).astype(np.uint8)
     tqdm.write(confusion_matrix(preds, gt, [0, 1]))
-    # TODO AS: Save best only
-    # model_checkpoint.step(val_loss)
+    model_checkpoint.step(val_loss)
 
 def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
     torch.backends.cudnn.benchmark = True
