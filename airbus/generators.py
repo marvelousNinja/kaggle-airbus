@@ -61,3 +61,9 @@ def get_train_generator(batch_size, limit=None):
     mask_db = get_mask_db('data/train_ship_segmentations.csv')
     transform = partial(pipeline, mask_db)
     return DataGenerator(image_paths[:limit], batch_size, transform)
+
+def get_test_generator(batch_size, limit=None):
+    mask_db = get_mask_db('data/train_ship_segmentations.csv')
+    image_paths = get_images_in('data/test')
+    transform = partial(pipeline, mask_db)
+    return DataGenerator(image_paths[:limit], batch_size, transform, shuffle=False)

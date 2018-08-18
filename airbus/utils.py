@@ -1,14 +1,10 @@
 import glob
-from functools import partial
-from itertools import product
 
 import cv2
 import numpy as np
 import pandas as pd
 import torch
-from skimage.morphology import dilation
-from skimage.morphology import square
-from skimage.morphology import watershed
+from scipy import ndimage
 from tabulate import tabulate
 
 def get_train_validation_holdout_split(records):
@@ -31,7 +27,14 @@ def normalize(image):
 def channels_first(image):
     return np.moveaxis(image, 2, 0)
 
-def decode_rle_mask(shape, encoded_mask):
+def encode_rle(mask):
+    pixels = mask.flatten()
+    pixels = np.concatenate([[0], pixels, [0]])
+    runs = np.where(pixels[1:] != pixels[:-1])[0] + 1
+    runs[1::2] -= runs[::2]
+    return ' '.join(str(x) for x in runs)
+
+def decode_rle(shape, encoded_mask):
     if encoded_mask == 'nan': return np.zeros(shape)
     numbers = np.array(list(map(int, encoded_mask.split())))
     starts, lengths = numbers[::2], numbers[1::2]
@@ -43,11 +46,21 @@ def decode_rle_mask(shape, encoded_mask):
     mask = np.clip(mask, a_min=0, a_max=2)
     return mask.reshape(shape).T
 
+def extract_instance_masks(mask):
+    masks = []
+    labelled_mask = ndimage.label(mask)[0]
+    for label in np.unique(labelled_mask):
+        if label == 0: continue
+        mask = np.zeros(mask.shape)
+        mask[labelled_mask == label] = 1
+        masks.append(mask)
+    return masks
+
 def load_mask(mask_db, shape, image_path):
     image_id = image_path.split('/')[-1]
     labelled_mask = np.zeros(shape)
     for encoded_mask in mask_db[mask_db['ImageId'] == image_id]['EncodedPixels'].fillna('nan'):
-        labelled_mask += decode_rle_mask(shape, encoded_mask)
+        labelled_mask += decode_rle(shape, encoded_mask)
     labelled_mask[labelled_mask > 0] = 1
     return labelled_mask
 
