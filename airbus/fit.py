@@ -20,7 +20,7 @@ def dice_loss(logits, labels):
     intersection = (probs * labels).sum((1, 2))
     pred_volume = probs.sum((1, 2))
     true_volume = labels.sum((1, 2))
-    return (1 - 2 * intersection / (pred_volume + true_volume)).mean()
+    return (1 - 2 * intersection / (pred_volume + true_volume + 1.0)).mean()
 
 def compute_loss(logits, labels):
     return dice_loss(logits, labels)
@@ -40,7 +40,8 @@ def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
     fit_model(
         model=model,
         train_generator=get_train_generator(batch_size, limit),
-        validation_generator=get_validation_generator(batch_size, limit),
+        # TODO AS: Colab explodes with out of memory
+        validation_generator=get_validation_generator(batch_size, 160),
         optimizer=optimizer,
         loss_fn=compute_loss,
         num_epochs=num_epochs,
