@@ -1,4 +1,5 @@
 import glob
+from functools import partial
 
 import cv2
 import numpy as np
@@ -20,6 +21,18 @@ def get_images_in(path):
 
 def read_image(path):
     return cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
+
+def read_image_cached(cache, preprocess, path):
+    image = cache.get(path)
+    if image is not None:
+        return image
+    else:
+        image = preprocess(read_image(path))
+        cache[path] = image
+        return image
+
+def resize(size, image):
+    return cv2.resize(image, size, interpolation=cv2.INTER_NEAREST)
 
 def normalize(image):
     return (image.astype(np.float32) / 255 - [0.485, 0.456, 0.406]) / [0.229, 0.224, 0.225]
@@ -64,11 +77,21 @@ def load_mask(mask_db, shape, image_path):
     labelled_mask[labelled_mask > 0] = 1
     return labelled_mask
 
-def pipeline(mask_db, path):
-    image = read_image(path)
+def load_mask_cached(cache, preprocess, mask_db, shape, path):
+    mask = cache.get(path)
+    if mask is not None:
+        return mask
+    else:
+        mask = preprocess(load_mask(mask_db, shape, path))
+        cache[path] = mask
+        return mask
+
+def pipeline(mask_db, cache, mask_cache, path):
+    preprocess = partial(resize, (224, 224))
+    image = read_image_cached(cache, preprocess, path)
     image = normalize(image)
     image = channels_first(image)
-    mask = load_mask(mask_db, image.shape[1:], path)
+    mask = load_mask_cached(mask_cache, preprocess, mask_db, (768, 768), path)
     return image, mask
 
 def confusion_matrix(pred_labels, true_labels, labels):

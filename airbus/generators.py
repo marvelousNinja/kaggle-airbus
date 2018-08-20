@@ -50,7 +50,7 @@ def get_validation_generator(batch_size, limit=None):
     images_with_ships = mask_db[mask_db['EncodedPixels'].notnull()]['ImageId'].unique()
     image_paths = 'data/train/' + images_with_ships
     _, image_paths, _ = get_train_validation_holdout_split(image_paths)
-    transform = partial(pipeline, mask_db)
+    transform = partial(pipeline, mask_db, {}, {})
     return DataGenerator(image_paths[:limit], batch_size, transform)
 
 def get_train_generator(batch_size, limit=None):
@@ -59,11 +59,11 @@ def get_train_generator(batch_size, limit=None):
     image_paths = 'data/train/' + images_with_ships
     image_paths, _, _ = get_train_validation_holdout_split(image_paths)
     mask_db = get_mask_db('data/train_ship_segmentations.csv')
-    transform = partial(pipeline, mask_db)
+    transform = partial(pipeline, mask_db, {}, {})
     return DataGenerator(image_paths[:limit], batch_size, transform)
 
 def get_test_generator(batch_size, limit=None):
     mask_db = get_mask_db('data/train_ship_segmentations.csv')
     image_paths = get_images_in('data/test')
-    transform = partial(pipeline, mask_db)
+    transform = partial(pipeline, mask_db, {}, {})
     return DataGenerator(image_paths[:limit], batch_size, transform, shuffle=False)

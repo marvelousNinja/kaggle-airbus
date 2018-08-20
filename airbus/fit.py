@@ -25,7 +25,7 @@ def dice_loss(logits, labels):
 def compute_loss(logits, labels):
     return dice_loss(logits, labels)
 
-def after_validation(model_checkpoint, val_loss, outputs, labels):
+def after_validation(model_checkpoint, val_loss, outputs, gt):
     tqdm.write(confusion_matrix(np.argmax(outputs, axis=1), gt, [0, 1, 2]))
     model_checkpoint.step(val_loss)
 
