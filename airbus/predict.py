@@ -4,18 +4,15 @@ import torch
 from fire import Fire
 from tqdm import tqdm
 
-from airbus.linknet import Linknet
 from airbus.model_checkpoint import load_checkpoint
-from airbus.utils import get_images_in
+from airbus.generators import get_test_generator
 from airbus.utils import as_cuda
-from airbus.utils import from_numpy
-from airbus.utils import to_numpy
 from airbus.utils import encode_rle
 from airbus.utils import extract_instance_masks
-from airbus.generators import get_test_generator
-
-import cv2
-import matplotlib.pyplot as plt
+from airbus.utils import from_numpy
+from airbus.utils import get_images_in
+from airbus.utils import resize
+from airbus.utils import to_numpy
 
 def predict(checkpoint_path, batch_size=1, limit=None):
     model = load_checkpoint(checkpoint_path)
@@ -38,7 +35,7 @@ def predict(checkpoint_path, batch_size=1, limit=None):
                 records.append((_id, None))
             else:
                 for instance_mask in instance_masks:
-                    records.append((_id, encode_rle(instance_mask)))
+                    records.append((_id, encode_rle(resize((768, 768), instance_mask))))
 
     image_ids, encoded_pixels = zip(*records)
     df = pd.DataFrame({'ImageId': image_ids, 'EncodedPixels': encoded_pixels})
