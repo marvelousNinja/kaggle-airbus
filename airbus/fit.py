@@ -12,7 +12,6 @@ from airbus.model_checkpoint import ModelCheckpoint
 from airbus.training import fit_model
 from airbus.utils import as_cuda
 from airbus.utils import confusion_matrix
-from airbus.utils import to_numpy
 
 def dice_loss(logits, labels):
     probs = torch.nn.functional.softmax(logits, dim=1)

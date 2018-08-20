@@ -20,6 +20,7 @@ import matplotlib.pyplot as plt
 def predict(checkpoint_path, batch_size=1, limit=None):
     model = load_checkpoint(checkpoint_path)
     model = as_cuda(model)
+    torch.set_grad_enabled(False)
     model.eval()
 
     records = []

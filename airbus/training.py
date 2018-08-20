@@ -1,4 +1,5 @@
 import numpy as np
+import torch
 from tqdm import tqdm
 
 from airbus.utils import from_numpy
@@ -18,6 +19,7 @@ def fit_model(
         train_loss = 0
         num_batches = len(train_generator)
         model.train()
+        torch.set_grad_enabled(True)
         for inputs, gt in tqdm(train_generator, total=num_batches):
             inputs, gt = from_numpy(inputs), from_numpy(gt)
             optimizer.zero_grad()
@@ -32,6 +34,7 @@ def fit_model(
         all_gt = []
         num_batches = len(validation_generator)
         model.eval()
+        torch.set_grad_enabled(False)
         for inputs, gt in tqdm(validation_generator, total=num_batches):
             all_gt.append(gt)
             inputs, gt = from_numpy(inputs), from_numpy(gt)
