@@ -26,10 +26,8 @@ def dice_loss(logits, labels):
 def compute_loss(logits, labels):
     return dice_loss(logits, labels)
 
-def after_validation(model_checkpoint, logits, labels, val_loss):
-    preds = to_numpy(logits.argmax(dim=1)).astype(np.uint8)
-    gt = to_numpy(labels).astype(np.uint8)
-    tqdm.write(confusion_matrix(preds, gt, [0, 1]))
+def after_validation(model_checkpoint, val_loss, outputs, labels):
+    tqdm.write(confusion_matrix(np.argmax(outputs, axis=1), gt, [0, 1, 2]))
     model_checkpoint.step(val_loss)
 
 def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
