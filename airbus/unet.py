@@ -5,10 +5,10 @@ class Encoder(torch.nn.Module):
         super().__init__()
         self.layers = torch.nn.Sequential(
             torch.nn.Conv2d(in_channels, out_channels, (3, 3), padding=1),
-            #torch.nn.BatchNorm2d(out_channels),
+            torch.nn.BatchNorm2d(out_channels),
             torch.nn.ReLU(inplace=True),
             torch.nn.Conv2d(out_channels, out_channels, (3, 3), padding=1),
-            #torch.nn.BatchNorm2d(out_channels),
+            torch.nn.BatchNorm2d(out_channels),
             torch.nn.ReLU(inplace=True)
         )
 
@@ -26,10 +26,10 @@ class Decoder(torch.nn.Module):
             self.upscaler = torch.nn.ConvTranspose2d(downsample_channels, shortcut_channels, (3, 3), stride=2, padding=1, output_padding=1)
         self.layers = torch.nn.Sequential(
             torch.nn.Conv2d(middle_channels, out_channels, (3, 3), padding=1),
-            #torch.nn.BatchNorm2d(out_channels),
+            torch.nn.BatchNorm2d(out_channels),
             torch.nn.ReLU(inplace=True),
             torch.nn.Conv2d(out_channels, out_channels, (3, 3), padding=1),
-            #torch.nn.BatchNorm2d(out_channels),
+            torch.nn.BatchNorm2d(out_channels),
             torch.nn.ReLU(inplace=True)
         )
 
@@ -60,11 +60,7 @@ class Unet(torch.nn.Module):
         x4, x = self.enc_4(x)
         x, _ = self.enc_5(x)
         x = self.dec_1(x4, x)
-        del x4
         x = self.dec_2(x3, x)
-        del x3
         x = self.dec_3(x2, x)
-        del x2
         x = self.dec_4(x1, x)
-        del x1
         return self.final_conv(x)

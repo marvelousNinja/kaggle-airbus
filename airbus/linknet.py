@@ -34,8 +34,7 @@ class Linknet(torch.nn.Module):
             torch.nn.Conv2d(32, 32, kernel_size=(3, 3), stride=1, padding=1),
             torch.nn.BatchNorm2d(32),
             torch.nn.ReLU(inplace=True),
-            torch.nn.ConvTranspose2d(32, num_classes, (2, 2), stride=2),
-            torch.nn.LogSoftmax(dim=1)
+            torch.nn.ConvTranspose2d(32, num_classes, (2, 2), stride=2)
         )
 
     def forward(self, x):

@@ -30,7 +30,7 @@ def generalized_dice_loss(logits, labels):
     for label in [0, 1]:
         pred_probs = probs[:, label, :, :]
         true_labels = (labels == label).float()
-        weight = (true_labels.sum() + 1) ** (-2)
+        weight = (true_labels.sum((1, 2)) + 1) ** (-2)
         numerator += weight * (pred_probs * true_labels).sum((1, 2))
         denominator += weight * (pred_probs.sum((1, 2)) + true_labels.sum((1, 2)) + 1)
     return (1 - 2 * numerator / denominator).mean()
@@ -39,7 +39,7 @@ def compute_loss(logits, labels):
     return generalized_dice_loss(logits, labels)
 
 def after_validation(model_checkpoint, val_loss, outputs, gt):
-    tqdm.write(confusion_matrix(np.argmax(outputs, axis=1), gt, [0, 1, 2]))
+    tqdm.write(confusion_matrix(np.argmax(outputs, axis=1), gt, [0, 1]))
     model_checkpoint.step(val_loss)
 
 def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
