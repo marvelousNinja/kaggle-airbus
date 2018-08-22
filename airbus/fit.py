@@ -12,6 +12,7 @@ from airbus.model_checkpoint import ModelCheckpoint
 from airbus.training import fit_model
 from airbus.utils import as_cuda
 from airbus.utils import confusion_matrix
+from airbus.model_checkpoint import load_checkpoint
 
 def dice_loss(logits, labels):
     probs = torch.nn.functional.softmax(logits, dim=1)
@@ -52,10 +53,15 @@ def after_validation(model_checkpoint, val_loss, outputs, gt):
     tqdm.write(confusion_matrix(np.argmax(outputs, axis=1), gt, [0, 1]))
     model_checkpoint.step(val_loss)
 
-def fit(num_epochs=100, limit=None, batch_size=16, lr=.001):
+def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None):
     torch.backends.cudnn.benchmark = True
     np.random.seed(1991)
-    model = Linknet(2)
+
+    if checkpoint_path:
+        model = load_checkpoint(checkpoint_path)
+    else:
+        model = Linknet(2)
+
     model = as_cuda(model)
     optimizer = torch.optim.Adam(filter(lambda param: param.requires_grad, model.parameters()), lr)
     model_checkpoint = ModelCheckpoint(model, 'linknet', tqdm.write)
