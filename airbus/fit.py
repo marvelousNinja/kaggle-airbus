@@ -4,6 +4,7 @@ from functools import partial
 import torch
 import telegram_send
 import numpy as np
+import matplotlib; matplotlib.use('agg')
 import matplotlib.pyplot as plt
 from fire import Fire
 from tqdm import tqdm
