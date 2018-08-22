@@ -64,9 +64,10 @@ def extract_instance_masks(mask):
     labelled_mask = ndimage.label(mask)[0]
     for label in np.unique(labelled_mask):
         if label == 0: continue
-        mask = np.zeros(mask.shape)
+        mask = np.zeros(labelled_mask.shape)
         mask[labelled_mask == label] = 1
-        masks.append(mask)
+        area = mask.sum()
+        if area >= 50: masks.append(mask)
     return masks
 
 def load_mask(mask_db, shape, image_path):
