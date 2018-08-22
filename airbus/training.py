@@ -12,10 +12,11 @@ def fit_model(
         optimizer,
         loss_fn,
         num_epochs,
+        logger,
         after_validation=None
     ):
 
-    for _ in tqdm(range(num_epochs)):
+    for epoch in tqdm(range(num_epochs)):
         train_loss = 0
         num_batches = len(train_generator)
         model.train()
@@ -46,4 +47,4 @@ def fit_model(
         if after_validation:
             after_validation(val_loss, np.concatenate(all_outputs), np.concatenate(all_gt))
 
-        tqdm.write(f'train loss {train_loss:.5f} - val loss {val_loss:.5f}')
+        logger(f'epoch {epoch} train loss {train_loss:.5f} - val loss {val_loss:.5f}')

@@ -1,6 +1,7 @@
 from functools import partial
 
 import torch
+import telegram_send
 import numpy as np
 from fire import Fire
 from tqdm import tqdm
@@ -49,13 +50,21 @@ def asymmetric_similarity_loss(logits, labels):
 def compute_loss(logits, labels):
     return asymmetric_similarity_loss(logits, labels)
 
-def after_validation(model_checkpoint, val_loss, outputs, gt):
-    tqdm.write(confusion_matrix(np.argmax(outputs, axis=1), gt, [0, 1]))
+def telegram_log(message):
+    telegram_send.send(conf='./telegram.conf', messages=[f'`{message}`'], parse_mode='markdown')
+
+def after_validation(logger, model_checkpoint, val_loss, outputs, gt):
+    logger(confusion_matrix(np.argmax(outputs, axis=1), gt, [0, 1]))
     model_checkpoint.step(val_loss)
 
-def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None):
+def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None, telegram=False):
     torch.backends.cudnn.benchmark = True
     np.random.seed(1991)
+
+    if telegram:
+        logger = telegram_log
+    else:
+        logger = tqdm.write
 
     if checkpoint_path:
         model = load_checkpoint(checkpoint_path)
@@ -64,17 +73,18 @@ def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None
 
     model = as_cuda(model)
     optimizer = torch.optim.Adam(filter(lambda param: param.requires_grad, model.parameters()), lr)
-    model_checkpoint = ModelCheckpoint(model, 'linknet', tqdm.write)
+    model_checkpoint = ModelCheckpoint(model, 'linknet', logger)
 
     fit_model(
         model=model,
         train_generator=get_train_generator(batch_size, limit),
         # TODO AS: Colab explodes with out of memory
-        validation_generator=get_validation_generator(batch_size, 160),
+        validation_generator=get_validation_generator(batch_size, 1),
         optimizer=optimizer,
         loss_fn=compute_loss,
         num_epochs=num_epochs,
-        after_validation=partial(after_validation, model_checkpoint)
+        after_validation=partial(after_validation, logger, model_checkpoint),
+        logger=logger
     )
 
 def prof():
