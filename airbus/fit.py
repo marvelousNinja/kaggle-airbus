@@ -1,8 +1,10 @@
+import io
 from functools import partial
 
 import torch
 import telegram_send
 import numpy as np
+import matplotlib.pyplot as plt
 from fire import Fire
 from tqdm import tqdm
 
@@ -50,19 +52,41 @@ def asymmetric_similarity_loss(logits, labels):
 def compute_loss(logits, labels):
     return asymmetric_similarity_loss(logits, labels)
 
-def telegram_log(message):
+def send_telegram_message(message):
     telegram_send.send(conf='./telegram.conf', messages=[f'`{message}`'], parse_mode='markdown')
 
-def after_validation(logger, model_checkpoint, val_loss, outputs, gt):
+def send_telegram_figure(figure):
+    buf = io.BytesIO()
+    figure.savefig(buf, format='png')
+    buf.seek(0)
+    telegram_send.send(conf='./telegram.conf', images=[buf])
+
+def plot_figure(figure):
+    plt.show()
+
+def after_validation(visualize, telegram, logger, model_checkpoint, val_loss, outputs, gt):
+    if visualize:
+        probs = (np.exp(outputs) / np.expand_dims(np.sum(np.exp(outputs), axis=1), axis=1))[:, 1, :, :]
+        num_samples = min(len(gt), 8)
+        plt.figure(figsize=(10, 5))
+        for i in range(num_samples):
+            plt.subplot(2, num_samples, i + 1)
+            plt.imshow(probs[i])
+            plt.subplot(2, num_samples, num_samples + i + 1)
+            plt.imshow(gt[i])
+        plt.gcf().tight_layout()
+        plt.subplots_adjust(hspace=0.1, wspace=0.1)
+        send_telegram_figure(plt.gcf()) if telegram else plot_figure(plt.gcf())
+
     logger(confusion_matrix(np.argmax(outputs, axis=1), gt, [0, 1]))
     model_checkpoint.step(val_loss)
 
-def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None, telegram=False):
+def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None, telegram=False, visualize=False):
     torch.backends.cudnn.benchmark = True
     np.random.seed(1991)
 
     if telegram:
-        logger = telegram_log
+        logger = send_telegram_message
     else:
         logger = tqdm.write
 
@@ -79,11 +103,11 @@ def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None
         model=model,
         train_generator=get_train_generator(batch_size, limit),
         # TODO AS: Colab explodes with out of memory
-        validation_generator=get_validation_generator(batch_size, 1),
+        validation_generator=get_validation_generator(batch_size, 160),
         optimizer=optimizer,
         loss_fn=compute_loss,
         num_epochs=num_epochs,
-        after_validation=partial(after_validation, logger, model_checkpoint),
+        after_validation=partial(after_validation, visualize, telegram, logger, model_checkpoint),
         logger=logger
     )
 

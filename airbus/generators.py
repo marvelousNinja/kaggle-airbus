@@ -51,7 +51,7 @@ def get_validation_generator(batch_size, limit=None):
     image_paths = 'data/train/' + images_with_ships
     _, image_paths, _ = get_train_validation_holdout_split(image_paths)
     transform = partial(pipeline, mask_db, {}, {})
-    return DataGenerator(image_paths[:limit], batch_size, transform)
+    return DataGenerator(image_paths[:limit], batch_size, transform, shuffle=False)
 
 def get_train_generator(batch_size, limit=None):
     mask_db = get_mask_db('data/train_ship_segmentations.csv')

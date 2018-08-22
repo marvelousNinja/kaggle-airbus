@@ -9,3 +9,4 @@ pip3 install -r requirements.txt
 
 ./make.sh
 cp kaggle.json.sample kaggle.json
+cp telegram.conf.sample telegram.conf
