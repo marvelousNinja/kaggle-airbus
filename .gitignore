@@ -58,3 +58,5 @@ data/*/*
 !/data/models/.gitkeep
 !/data/submissions/.gitkeep
 fit.profile
+
+telegram.conf
