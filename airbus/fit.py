@@ -67,11 +67,19 @@ def plot_figure(figure):
 
 def after_validation(visualize, telegram, logger, model_checkpoint, val_loss, outputs, gt):
     if visualize:
+        # TODO AS: Preserve individual losses and dedup this?
         probs = (np.exp(outputs) / np.expand_dims(np.sum(np.exp(outputs), axis=1), axis=1))[:, 1, :, :]
+        beta = 1.5
+        intersection = (probs * gt).sum((1, 2))
+        false_positives = ((1 - gt) * probs).sum((1, 2)) * (beta ** 2) / (1 + beta ** 2)
+        false_negatives = ((1 - probs) * gt).sum((1, 2)) / (1 + beta ** 2)
+        losses = (1 - intersection / (intersection + false_negatives + false_positives))
+
         num_samples = min(len(gt), 8)
         plt.figure(figsize=(10, 5))
         for i in range(num_samples):
             plt.subplot(2, num_samples, i + 1)
+            plt.gca().set_title(f'{losses[i]:.3f}')
             plt.imshow(probs[i])
             plt.subplot(2, num_samples, num_samples + i + 1)
             plt.imshow(gt[i])
