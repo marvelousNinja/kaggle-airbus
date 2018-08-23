@@ -65,28 +65,35 @@ def send_telegram_figure(figure):
 def plot_figure(figure):
     plt.show()
 
+def visualize_losses(telegram, outputs, gt):
+    num_samples = min(len(gt), 8)
+    outputs = outputs[:num_samples]
+    gt = gt[:num_samples]
+
+    probs = (np.exp(outputs) / np.expand_dims(np.sum(np.exp(outputs), axis=1), axis=1))[:, 1, :, :]
+    beta = 1.5
+    intersection = (probs * gt).sum((1, 2))
+    false_positives = ((1 - gt) * probs).sum((1, 2)) * (beta ** 2) / (1 + beta ** 2)
+    false_negatives = ((1 - probs) * gt).sum((1, 2)) / (1 + beta ** 2)
+    losses = (1 - intersection / (intersection + false_negatives + false_positives))
+
+    num_samples = min(len(gt), 8)
+    plt.figure(figsize=(10, 5))
+    for i in range(num_samples):
+        plt.subplot(2, num_samples, i + 1)
+        plt.gca().set_title(f'L {losses[i]:.2f}\nI {intersection[i]:.2f}\nFP {false_positives[i]:.2f}\nFN {false_negatives[i]:.2f}')
+        plt.imshow(probs[i])
+        plt.subplot(2, num_samples, num_samples + i + 1)
+        plt.imshow(gt[i])
+    plt.gcf().tight_layout()
+    plt.subplots_adjust(hspace=0.1, wspace=0.1)
+    if telegram:
+        send_telegram_figure(plt.gcf())
+    else:
+        plot_figure(plt.gcf())
+
 def after_validation(visualize, telegram, logger, model_checkpoint, val_loss, outputs, gt):
-    if visualize:
-        # TODO AS: Preserve individual losses and dedup this?
-        probs = (np.exp(outputs) / np.expand_dims(np.sum(np.exp(outputs), axis=1), axis=1))[:, 1, :, :]
-        beta = 1.5
-        intersection = (probs * gt).sum((1, 2))
-        false_positives = ((1 - gt) * probs).sum((1, 2)) * (beta ** 2) / (1 + beta ** 2)
-        false_negatives = ((1 - probs) * gt).sum((1, 2)) / (1 + beta ** 2)
-        losses = (1 - intersection / (intersection + false_negatives + false_positives))
-
-        num_samples = min(len(gt), 8)
-        plt.figure(figsize=(10, 5))
-        for i in range(num_samples):
-            plt.subplot(2, num_samples, i + 1)
-            plt.gca().set_title(f'{losses[i]:.3f}')
-            plt.imshow(probs[i])
-            plt.subplot(2, num_samples, num_samples + i + 1)
-            plt.imshow(gt[i])
-        plt.gcf().tight_layout()
-        plt.subplots_adjust(hspace=0.1, wspace=0.1)
-        send_telegram_figure(plt.gcf()) if telegram else plot_figure(plt.gcf())
-
+    if visualize: visualize_losses(telegram, outputs, gt)
     logger(confusion_matrix(np.argmax(outputs, axis=1), gt, [0, 1]))
     model_checkpoint.step(val_loss)
 
