@@ -9,40 +9,28 @@ from airbus.utils import get_train_validation_holdout_split
 from airbus.utils import pipeline
 
 class DataGenerator:
-    def __init__(self, records, batch_size, transform, batched_pipeline=False, shuffle=True):
+    def __init__(self, records, batch_size, transform, shuffle=True):
         self.records = records
         self.batch_size = batch_size
         self.transform = transform
         self.shuffle = shuffle
-        self.batched_pipeline = batched_pipeline
 
     def __iter__(self):
         if self.shuffle: np.random.shuffle(self.records)
         batch = []
 
         for output in map(self.transform, self.records):
-            # TODO AS: Infer this? Or force pipeline to always return array
-            if self.batched_pipeline:
-                batched_output = output
-                for output in zip(*batched_output):
-                    batch.append(output)
-                    if len(batch) >= self.batch_size:
-                        split_outputs = list(zip(*batch))
-                        yield map(np.stack, split_outputs)
-                        batch = []
-            else:
-                batch.append(output)
-                if len(batch) >= self.batch_size:
-                    split_outputs = list(zip(*batch))
-                    yield map(np.stack, split_outputs)
-                    batch = []
+            batch.append(output)
+            if len(batch) >= self.batch_size:
+                split_outputs = list(zip(*batch))
+                yield list(map(np.stack, split_outputs))
+                batch = []
 
         if len(batch) > 0:
             split_outputs = list(zip(*batch))
-            yield map(np.stack, split_outputs)
+            yield list(map(np.stack, split_outputs))
 
     def __len__(self):
-        # TODO AS: 9 patches per image. Clean this up
         return math.ceil(len(self.records) / self.batch_size)
 
 def get_validation_generator(batch_size, limit=None):
