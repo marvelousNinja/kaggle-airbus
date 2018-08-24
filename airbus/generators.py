@@ -3,6 +3,7 @@ from functools import partial
 
 import numpy as np
 
+from airbus.throttled_pool import ThrottledPool
 from airbus.utils import get_images_in
 from airbus.utils import get_mask_db
 from airbus.utils import get_train_validation_holdout_split
@@ -18,8 +19,8 @@ class DataGenerator:
     def __iter__(self):
         if self.shuffle: np.random.shuffle(self.records)
         batch = []
-
-        for output in map(self.transform, self.records):
+        pool = ThrottledPool()
+        for output in pool.imap(self.transform, self.records):
             batch.append(output)
             if len(batch) >= self.batch_size:
                 split_outputs = list(zip(*batch))
