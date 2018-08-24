@@ -1,9 +1,9 @@
 import math
 from functools import partial
+from multiprocessing.pool import ThreadPool
 
 import numpy as np
 
-from airbus.throttled_pool import ThrottledPool
 from airbus.utils import get_images_in
 from airbus.utils import get_mask_db
 from airbus.utils import get_train_validation_holdout_split
@@ -19,13 +19,19 @@ class DataGenerator:
     def __iter__(self):
         if self.shuffle: np.random.shuffle(self.records)
         batch = []
-        pool = ThrottledPool()
-        for output in pool.imap(self.transform, self.records):
-            batch.append(output)
-            if len(batch) >= self.batch_size:
-                split_outputs = list(zip(*batch))
-                yield list(map(np.stack, split_outputs))
-                batch = []
+        pool = ThreadPool()
+        prefetch_size = 2000
+        num_slices = len(self.records) // prefetch_size + 1
+
+        for i in range(num_slices):
+            start = i * prefetch_size
+            end = start + prefetch_size
+            for output in pool.imap(self.transform, self.records[start:end]):
+                batch.append(output)
+                if len(batch) >= self.batch_size:
+                    split_outputs = list(zip(*batch))
+                    yield list(map(np.stack, split_outputs))
+                    batch = []
 
         if len(batch) > 0:
             split_outputs = list(zip(*batch))
