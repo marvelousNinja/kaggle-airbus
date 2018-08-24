@@ -91,6 +91,7 @@ def visualize_losses(telegram, outputs, gt):
         send_telegram_figure(plt.gcf())
     else:
         plot_figure(plt.gcf())
+    plt.close()
 
 def after_validation(visualize, telegram, logger, model_checkpoint, val_loss, outputs, gt):
     if visualize: visualize_losses(telegram, outputs, gt)
