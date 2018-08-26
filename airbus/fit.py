@@ -12,6 +12,7 @@ from tqdm import tqdm
 from airbus.generators import get_train_generator
 from airbus.generators import get_validation_generator
 from airbus.linknet import Linknet
+from airbus.dilated_fcn import DilatedFcn
 from airbus.model_checkpoint import ModelCheckpoint
 from airbus.training import fit_model
 from airbus.utils import as_cuda
@@ -110,7 +111,7 @@ def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None
     if checkpoint_path:
         model = load_checkpoint(checkpoint_path)
     else:
-        model = Linknet(2)
+        model = DilatedFcn(2)
 
     model = as_cuda(model)
     optimizer = torch.optim.Adam(filter(lambda param: param.requires_grad, model.parameters()), lr)
@@ -120,7 +121,7 @@ def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None
         model=model,
         train_generator=get_train_generator(batch_size, limit),
         # TODO AS: Colab explodes with out of memory
-        validation_generator=get_validation_generator(batch_size, 160),
+        validation_generator=get_validation_generator(batch_size, 1),
         optimizer=optimizer,
         loss_fn=compute_loss,
         num_epochs=num_epochs,
