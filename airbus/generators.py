@@ -42,18 +42,16 @@ class DataGenerator:
 
 def get_validation_generator(batch_size, limit=None):
     mask_db = get_mask_db('data/train_ship_segmentations.csv')
-    mask_db['Area'] = mask_db['EncodedPixels'].fillna('0 0').str.split().apply(lambda v: np.array(v).astype(np.uint8)[1::2].sum())
-    images_without_small_ships = mask_db.groupby('ImageId')['Area'].min()[mask_db.groupby('ImageId')['Area'].min() > 200].index.values
-    image_paths = 'data/train/' + images_without_small_ships
+    images_with_ships = mask_db[mask_db['EncodedPixels'].notnull()]['ImageId'].unique()
+    image_paths = 'data/train/' + images_with_ships
     _, image_paths, _ = get_train_validation_holdout_split(image_paths)
     transform = partial(pipeline, mask_db, {}, {})
     return DataGenerator(image_paths[:limit], batch_size, transform, shuffle=False)
 
 def get_train_generator(batch_size, limit=None):
     mask_db = get_mask_db('data/train_ship_segmentations.csv')
-    mask_db['Area'] = mask_db['EncodedPixels'].fillna('0 0').str.split().apply(lambda v: np.array(v).astype(np.uint8)[1::2].sum())
-    images_without_small_ships = mask_db.groupby('ImageId')['Area'].min()[mask_db.groupby('ImageId')['Area'].min() > 200].index.values
-    image_paths = 'data/train/' + images_without_small_ships
+    images_with_ships = mask_db[mask_db['EncodedPixels'].notnull()]['ImageId'].unique()
+    image_paths = 'data/train/' + images_with_ships
     image_paths, _, _ = get_train_validation_holdout_split(image_paths)
     mask_db = get_mask_db('data/train_ship_segmentations.csv')
     transform = partial(pipeline, mask_db, {}, {})

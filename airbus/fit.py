@@ -94,17 +94,16 @@ def visualize_losses(image_logger, outputs, gt):
     image_logger(plt.gcf())
 
 def visualize_learning_curve(image_logger, train_losses, val_losses):
-    num_epochs = len(train_losses)
-    plt.plot(x=list(range(num_epochs)), y=train_losses, label='Train Loss')
-    plt.plot(x=list(range(num_epochs)), y=val_losses, label='Val Loss')
-    plt.plot(x=list(range(num_epochs)), y=np.array(train_losses) - np.array(val_losses), label='Generalization Error')
+    plt.plot(train_losses, label='Train Loss')
+    plt.plot(val_losses, label='Val Loss')
+    plt.plot(np.array(train_losses) - np.array(val_losses), label='Generalization Error')
     plt.legend()
     image_logger(plt.gcf())
 
 def on_validation_end(history, visualize, image_logger, logger, model_checkpoint, train_loss, val_loss, outputs, gt):
     if visualize:
         history.setdefault('train_losses', []).append(train_loss)
-        history.setdefault('val_losses', []).append(val_losse)
+        history.setdefault('val_losses', []).append(val_loss)
         visualize_losses(image_logger, outputs, gt)
         visualize_learning_curve(image_logger, history['train_losses'], history['val_losses'])
     logger(confusion_matrix(np.argmax(outputs, axis=1), gt, [0, 1]))
