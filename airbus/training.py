@@ -13,7 +13,7 @@ def fit_model(
         loss_fn,
         num_epochs,
         logger,
-        after_validation=None,
+        on_validation_end=None,
         on_batch_end=None
     ):
 
@@ -47,7 +47,7 @@ def fit_model(
             all_outputs.append(to_numpy(outputs))
         val_loss /= num_batches
 
-        if after_validation:
-            after_validation(val_loss, np.concatenate(all_outputs), np.concatenate(all_gt))
+        if on_validation_end:
+            on_validation_end(train_loss, val_loss, np.concatenate(all_outputs), np.concatenate(all_gt))
 
         logger(f'epoch {epoch} train loss {train_loss:.5f} - val loss {val_loss:.5f}')

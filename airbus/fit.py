@@ -62,11 +62,13 @@ def send_telegram_figure(figure):
     figure.savefig(buf, format='png')
     buf.seek(0)
     telegram_send.send(conf='./telegram.conf', images=[buf])
+    plt.close()
 
 def plot_figure(figure):
     plt.show()
+    plt.close()
 
-def visualize_losses(telegram, outputs, gt):
+def visualize_losses(image_logger, outputs, gt):
     num_samples = min(len(gt), 8)
     outputs = outputs[:num_samples]
     outputs -= np.expand_dims(np.max(outputs, axis=1), axis=1)
@@ -89,14 +91,22 @@ def visualize_losses(telegram, outputs, gt):
         plt.imshow(gt[i])
     plt.gcf().tight_layout()
     plt.subplots_adjust(hspace=0.1, wspace=0.1)
-    if telegram:
-        send_telegram_figure(plt.gcf())
-    else:
-        plot_figure(plt.gcf())
-    plt.close()
+    image_logger(plt.gcf())
 
-def after_validation(visualize, telegram, logger, model_checkpoint, val_loss, outputs, gt):
-    if visualize: visualize_losses(telegram, outputs, gt)
+def visualize_learning_curve(image_logger, train_losses, val_losses):
+    num_epochs = len(train_losses)
+    plt.plot(x=list(range(num_epochs)), y=train_losses, label='Train Loss')
+    plt.plot(x=list(range(num_epochs)), y=val_losses, label='Val Loss')
+    plt.plot(x=list(range(num_epochs)), y=np.array(train_losses) - np.array(val_losses), label='Generalization Error')
+    plt.legend()
+    image_logger(plt.gcf())
+
+def on_validation_end(history, visualize, image_logger, logger, model_checkpoint, train_loss, val_loss, outputs, gt):
+    if visualize:
+        history.setdefault('train_losses', []).append(train_loss)
+        history.setdefault('val_losses', []).append(val_losse)
+        visualize_losses(image_logger, outputs, gt)
+        visualize_learning_curve(image_logger, history['train_losses'], history['val_losses'])
     logger(confusion_matrix(np.argmax(outputs, axis=1), gt, [0, 1]))
     model_checkpoint.step(val_loss)
 
@@ -106,8 +116,10 @@ def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None
 
     if telegram:
         logger = send_telegram_message
+        image_logger = send_telegram_figure
     else:
         logger = tqdm.write
+        image_logger = plot_figure
 
     if checkpoint_path:
         model = load_checkpoint(checkpoint_path)
@@ -128,7 +140,7 @@ def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None
         optimizer=optimizer,
         loss_fn=compute_loss,
         num_epochs=num_epochs,
-        after_validation=partial(after_validation, visualize, telegram, logger, model_checkpoint),
+        on_validation_end=partial(on_validation_end, {}, visualize, image_logger, logger, model_checkpoint),
         on_batch_end=cyclic_lr.step,
         logger=logger
     )
