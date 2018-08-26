@@ -93,7 +93,7 @@ def pipeline(mask_db, cache, mask_cache, path):
     image = normalize(image)
     image = channels_first(image)
     mask = load_mask_cached(mask_cache, preprocess, mask_db, (768, 768), path)
-    return image, mask[39:-39, 39:-39]
+    return image, mask
 
 def confusion_matrix(pred_labels, true_labels, labels):
     pred_labels = pred_labels.reshape(-1)
