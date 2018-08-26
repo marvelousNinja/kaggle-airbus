@@ -9,14 +9,15 @@ import matplotlib.pyplot as plt
 from fire import Fire
 from tqdm import tqdm
 
+from airbus.cyclic_lr import CyclicLR
 from airbus.generators import get_train_generator
 from airbus.generators import get_validation_generator
 from airbus.linknet import Linknet
 from airbus.model_checkpoint import ModelCheckpoint
+from airbus.model_checkpoint import load_checkpoint
 from airbus.training import fit_model
 from airbus.utils import as_cuda
 from airbus.utils import confusion_matrix
-from airbus.model_checkpoint import load_checkpoint
 
 def dice_loss(logits, labels):
     probs = torch.nn.functional.softmax(logits, dim=1)
@@ -116,16 +117,19 @@ def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None
     model = as_cuda(model)
     optimizer = torch.optim.Adam(filter(lambda param: param.requires_grad, model.parameters()), lr)
     model_checkpoint = ModelCheckpoint(model, 'linknet', logger)
+    train_generator = get_train_generator(batch_size, limit)
+    cyclic_lr = CyclicLR(cycle_iterations=len(train_generator) * 2, min_lr=0.0001, max_lr=0.005, optimizer=optimizer, logger=logger)
 
     fit_model(
         model=model,
-        train_generator=get_train_generator(batch_size, limit),
+        train_generator=train_generator,
         # TODO AS: Colab explodes with out of memory
         validation_generator=get_validation_generator(batch_size, 160),
         optimizer=optimizer,
         loss_fn=compute_loss,
         num_epochs=num_epochs,
         after_validation=partial(after_validation, visualize, telegram, logger, model_checkpoint),
+        on_batch_end=cyclic_lr.step,
         logger=logger
     )
 

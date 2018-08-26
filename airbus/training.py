@@ -13,7 +13,8 @@ def fit_model(
         loss_fn,
         num_epochs,
         logger,
-        after_validation=None
+        after_validation=None,
+        on_batch_end=None
     ):
 
     for epoch in tqdm(range(num_epochs)):
@@ -28,6 +29,8 @@ def fit_model(
             loss.backward()
             optimizer.step()
             train_loss += loss.data[0]
+            if on_batch_end: on_batch_end()
+
         train_loss /= num_batches
 
         val_loss = 0
