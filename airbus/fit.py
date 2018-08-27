@@ -19,6 +19,15 @@ from airbus.training import fit_model
 from airbus.utils import as_cuda
 from airbus.utils import confusion_matrix
 
+def jaccard_loss(logits, labels):
+    smooth = 1e-12
+    probs = torch.nn.functional.softmax(logits, dim=1)
+    probs = probs[:, 1, :, :]
+    labels = labels.float()
+    intersection = (probs * labels).sum((1, 2))
+    union = probs.sum((1, 2)) + labels.sum((1, 2)) - intersection
+    return (1 - (intersection + smooth) / (union + smooth)).mean()
+
 def dice_loss(logits, labels):
     probs = torch.nn.functional.softmax(logits, dim=1)
     probs = probs[:, 1, :, :]
@@ -52,7 +61,7 @@ def asymmetric_similarity_loss(logits, labels):
     return (1 - intersection / (intersection + false_negatives + false_positives)).mean()
 
 def compute_loss(logits, labels):
-    return asymmetric_similarity_loss(logits, labels)
+    return jaccard_loss(logits, labels) * 0.5 + torch.nn.functional.cross_entropy(logits, labels.long()) * 0.5
 
 def send_telegram_message(message):
     telegram_send.send(conf='./telegram.conf', messages=[f'`{message}`'], parse_mode='markdown')
