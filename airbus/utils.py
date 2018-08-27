@@ -75,7 +75,6 @@ def load_mask(mask_db, shape, image_path):
     labelled_mask = np.zeros(shape)
     for encoded_mask in mask_db[mask_db['ImageId'] == image_id]['EncodedPixels'].fillna('nan'):
         labelled_mask += decode_rle(shape, encoded_mask)
-    labelled_mask[labelled_mask > 0] = 1
     return labelled_mask.astype(np.uint8)
 
 def load_mask_cached(cache, preprocess, mask_db, shape, path):
@@ -95,15 +94,34 @@ def make_random_cropper(crop_shape, image_shape):
     left = np.random.randint(image_shape[1] - crop_shape[1])
     return partial(crop, top, left, crop_shape)
 
+def mask_to_bbox(mask):
+    a = np.where(mask != 0)
+    return np.array([np.min(a[0]), np.min(a[1]), np.max(a[1]), np.max(a[0])])
+
+def random_crop_containing(crop_shape, image_shape, bbox):
+    bbox_top, bbox_left, bbox_right, bbox_bottom = bbox
+    top = max(bbox_bottom - crop_shape[0], 0)
+    bottom = min(bbox_top + crop_shape[0], image_shape[0])
+    left = max(bbox_right - crop_shape[1], 0)
+    right = min(bbox_left + crop_shape[1], image_shape[1])
+    top_shift = np.random.randint(max(bottom - top - crop_shape[0] + 1, 1))
+    left_shift = np.random.randint(max(right - left - crop_shape[1] + 1, 1))
+    return top + top_shift, left + left_shift, (crop_shape)
+
 def pipeline(mask_db, cache, mask_cache, path):
-    preprocess = partial(crop, 128, 128, (512, 512))
-    cropper = make_random_cropper((224, 224), (512, 512))
+    preprocess = lambda image: image
     image = read_image_cached(cache, preprocess, path)
-    image = cropper(image)
+    labelled_mask = load_mask_cached(mask_cache, preprocess, mask_db, (768, 768), path)
+    random_mask_label = np.random.randint(labelled_mask.max()) + 1
+    instance_mask = labelled_mask.copy()
+    instance_mask[instance_mask != random_mask_label] = 0
+    mask_bbox = mask_to_bbox(instance_mask)
+    top, left, crop_shape = random_crop_containing((224, 224), (768, 768), mask_bbox)
+    image = crop(top, left, crop_shape, image)
     image = normalize(image)
     image = channels_first(image)
-    mask = load_mask_cached(mask_cache, preprocess, mask_db, (768, 768), path)
-    mask = cropper(mask)
+    mask = crop(top, left, crop_shape, labelled_mask)
+    mask[mask > 1] = 1
     return image, mask
 
 def confusion_matrix(pred_labels, true_labels, labels):
