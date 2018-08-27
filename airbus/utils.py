@@ -87,12 +87,23 @@ def load_mask_cached(cache, preprocess, mask_db, shape, path):
         cache[path] = mask
         return mask
 
+def crop(top, left, shape, image):
+    return image[top:top + shape[0], left:left + shape[1]].copy()
+
+def make_random_cropper(crop_shape, image_shape):
+    top = np.random.randint(image_shape[0] - crop_shape[0])
+    left = np.random.randint(image_shape[1] - crop_shape[1])
+    return partial(crop, top, left, crop_shape)
+
 def pipeline(mask_db, cache, mask_cache, path):
-    preprocess = partial(resize, (224, 224))
+    preprocess = partial(crop, 128, 128, (512, 512))
+    cropper = make_random_cropper((224, 224), (512, 512))
     image = read_image_cached(cache, preprocess, path)
+    image = cropper(image)
     image = normalize(image)
     image = channels_first(image)
     mask = load_mask_cached(mask_cache, preprocess, mask_db, (768, 768), path)
+    mask = cropper(mask)
     return image, mask
 
 def confusion_matrix(pred_labels, true_labels, labels):
