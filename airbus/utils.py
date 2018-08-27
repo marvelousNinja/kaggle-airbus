@@ -76,7 +76,7 @@ def load_mask(mask_db, shape, image_path):
     for encoded_mask in mask_db[mask_db['ImageId'] == image_id]['EncodedPixels'].fillna('nan'):
         labelled_mask += decode_rle(shape, encoded_mask)
     labelled_mask[labelled_mask > 0] = 1
-    return labelled_mask
+    return labelled_mask.astype(np.uint8)
 
 def load_mask_cached(cache, preprocess, mask_db, shape, path):
     mask = cache.get(path)
