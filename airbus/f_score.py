@@ -10,7 +10,7 @@ def calculate_iou(masks, other_masks):
         ious.append(intersection / union)
     return np.array(ious).reshape((len(masks), len(other_masks)))
 
-def f2_score_with_threshold(threshold, ious):
+def f_score_with_threshold(beta, threshold, ious):
     # gt mask paired with predicted mask with IoU > threshold
     true_positives = 0
     for _ in range(ious.shape[0]):
@@ -29,16 +29,19 @@ def f2_score_with_threshold(threshold, ious):
 
     # gt mask not associated with pred mask
     false_negatives = ious.shape[0]
-    numerator = 5 * true_positives
-    denominator = (5 * true_positives + 4 * false_negatives + false_positives)
+    numerator = (1 + beta ** 2) * true_positives
+    denominator = ((1 + beta ** 2) * true_positives + (beta ** 2) * false_negatives + false_positives)
     if denominator == 0: return 1.0
     return numerator / denominator
 
-def f2_score(thresholds, pred_masks, gt_masks):
+def f_score(beta, thresholds, pred_masks, gt_masks):
     scores = []
     for image_pred_masks, image_gt_masks in zip(pred_masks, gt_masks):
         ious = calculate_iou(image_pred_masks, image_gt_masks)
-        threshold_scores = [f2_score_with_threshold(threshold, ious) for threshold in thresholds]
+        threshold_scores = [f_score_with_threshold(beta, threshold, ious) for threshold in thresholds]
         image_score = np.mean(threshold_scores)
         scores.append(image_score)
     return np.mean(scores)
+
+def f2_score(pred_masks, gt_masks):
+    return f_score(2, [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95], pred_masks, gt_masks)
