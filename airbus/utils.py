@@ -59,9 +59,9 @@ def decode_rle(shape, encoded_mask):
     mask = np.clip(mask, a_min=0, a_max=2)
     return mask.reshape(shape).T
 
-def extract_instance_masks(mask):
+def extract_instance_masks_from_binary_mask(binary_mask):
     masks = []
-    labelled_mask = ndimage.label(mask)[0]
+    labelled_mask = ndimage.label(binary_mask)[0]
     for label in np.unique(labelled_mask):
         if label == 0: continue
         mask = np.zeros(labelled_mask.shape)
@@ -70,11 +70,21 @@ def extract_instance_masks(mask):
         if area >= 50: masks.append(mask)
     return masks
 
+def extract_instance_masks_from_labelled_mask(labelled_mask):
+    masks = []
+    for label in np.unique(labelled_mask):
+        if label == 0: continue
+        mask = np.zeros(labelled_mask.shape)
+        mask[labelled_mask == label] = 1
+        masks.append(mask)
+    return masks
+
 def load_mask(mask_db, shape, image_path):
     image_id = image_path.split('/')[-1]
     labelled_mask = np.zeros(shape)
-    for encoded_mask in mask_db[mask_db['ImageId'] == image_id]['EncodedPixels'].fillna('nan'):
-        labelled_mask += decode_rle(shape, encoded_mask)
+
+    for i, encoded_mask in enumerate(mask_db[mask_db['ImageId'] == image_id]['EncodedPixels'].fillna('nan')):
+        labelled_mask[decode_rle(shape, encoded_mask) == 1] = i + 1
     return labelled_mask.astype(np.uint8)
 
 def load_mask_cached(cache, preprocess, mask_db, shape, path):
@@ -121,7 +131,6 @@ def pipeline(mask_db, cache, mask_cache, path):
     image = normalize(image)
     image = channels_first(image)
     mask = crop(top, left, crop_shape, labelled_mask)
-    mask[mask > 1] = 1
     return image, mask
 
 def confusion_matrix(pred_labels, true_labels, labels):

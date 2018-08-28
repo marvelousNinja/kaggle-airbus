@@ -8,7 +8,7 @@ from airbus.model_checkpoint import load_checkpoint
 from airbus.generators import get_test_generator
 from airbus.utils import as_cuda
 from airbus.utils import encode_rle
-from airbus.utils import extract_instance_masks
+from airbus.utils import extract_instance_masks_from_binary_mask
 from airbus.utils import from_numpy
 from airbus.utils import get_images_in
 from airbus.utils import resize
@@ -29,7 +29,7 @@ def predict(checkpoint_path, batch_size=1, limit=None):
         masks = to_numpy(torch.argmax(outputs, dim=1))
         for mask in masks:
             _id = ids.pop(0)
-            instance_masks = extract_instance_masks(mask)
+            instance_masks = extract_instance_masks_from_binary_mask(mask)
 
             if len(instance_masks) == 0:
                 records.append((_id, None))

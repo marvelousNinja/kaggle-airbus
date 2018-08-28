@@ -12,12 +12,15 @@ from tqdm import tqdm
 from airbus.cyclic_lr import CyclicLR
 from airbus.generators import get_train_generator
 from airbus.generators import get_validation_generator
+from airbus.f2_score import f2_score
 from airbus.linknet import Linknet
 from airbus.model_checkpoint import ModelCheckpoint
 from airbus.model_checkpoint import load_checkpoint
 from airbus.training import fit_model
 from airbus.utils import as_cuda
 from airbus.utils import confusion_matrix
+from airbus.utils import extract_instance_masks_from_binary_mask
+from airbus.utils import extract_instance_masks_from_labelled_mask
 
 def jaccard_loss(logits, labels):
     smooth = 1e-12
@@ -61,6 +64,7 @@ def asymmetric_similarity_loss(logits, labels):
     return (1 - intersection / (intersection + false_negatives + false_positives)).mean()
 
 def compute_loss(logits, labels):
+    labels[labels > 1] = 1
     return jaccard_loss(logits, labels) * 0.5 + torch.nn.functional.cross_entropy(logits, labels.long()) * 0.5
 
 def send_telegram_message(message):
@@ -109,7 +113,17 @@ def visualize_learning_curve(image_logger, train_losses, val_losses):
     plt.legend()
     image_logger(plt.gcf())
 
+def calc_f2_score(outputs, gt):
+    binary_masks = np.argmax(outputs, axis=1)
+    labelled_masks = gt
+    pred_masks = list(extract_instance_masks_from_binary_mask(mask) for mask in binary_masks)
+    true_masks = list(extract_instance_masks_from_labelled_mask(mask) for mask in labelled_masks)
+    thresholds = [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95]
+    return f2_score(thresholds, pred_masks, true_masks)
+
 def on_validation_end(history, visualize, image_logger, logger, model_checkpoint, train_loss, val_loss, outputs, gt):
+    logger(f'F2 Score: {calc_f2_score(outputs, gt)}')
+    gt[gt > 1] = 1
     if visualize:
         history.setdefault('train_losses', []).append(train_loss)
         history.setdefault('val_losses', []).append(val_loss)
