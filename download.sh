@@ -8,11 +8,11 @@ cd ./data
 
 kaggle competitions download -w -c airbus-ship-detection
 
-unzip test.zip -d ./test
-rm test.zip
-unzip train.zip -d ./train
-rm train.zip
-unzip train_ship_segmentations.csv.zip
-rm train_ship_segmentations.csv.zip
-unzip sample_submission.csv.zip
-rm sample_submission.csv.zip
+unzip test_v2.zip -d ./test
+rm test_v2.zip
+unzip train_v2.zip -d ./train
+rm train_v2.zip
+unzip train_ship_segmentations_v2.csv.zip
+rm train_ship_segmentations_v2.csv.zip
+unzip sample_submission_v2.csv.zip
+rm sample_submission_v2.csv.zip
