@@ -40,7 +40,5 @@ pyenv virtualenv 3.6.3 kaggle-airbus-3.6.3
 pip3 install http://download.pytorch.org/whl/cu90/torch-0.4.1-cp36-cp36m-linux_x86_64.whl
 pip3 install -r requirements.txt
 
-# Compile some C stuff
-./make.sh
 cp kaggle.json.sample kaggle.json
 cp telegram.conf.sample telegram.conf

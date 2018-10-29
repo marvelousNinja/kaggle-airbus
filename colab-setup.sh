@@ -6,6 +6,5 @@ apt-get install -y python3.6-tk nano htop screen nvidia-cuda-toolkit --no-instal
 pip3 install http://download.pytorch.org/whl/cu80/torch-0.4.1-cp36-cp36m-linux_x86_64.whl
 pip3 install -r requirements.txt
 
-./make.sh
 cp kaggle.json.sample kaggle.json
 cp telegram.conf.sample telegram.conf
