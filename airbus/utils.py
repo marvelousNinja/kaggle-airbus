@@ -1,21 +1,22 @@
 import glob
-from functools import partial
 
 import cv2
 import numpy as np
 import pandas as pd
 import torch
-import matplotlib.pyplot as plt
 from scipy import ndimage
-from tabulate import tabulate
 
-def get_train_validation_holdout_split(records):
-    np.random.shuffle(records)
-    n = len(records)
-    train = records[:int(n * .6)]
-    validation = records[int(n * .6):int(n * .75)]
-    holdout = records[int(n * .75)]
-    return train, validation, holdout
+def get_fold_split(mask_db, num_folds):
+    # TODO AS: Utilize non-empty images
+    np.random.seed(1991)
+    mask_db = mask_db[mask_db['EncodedPixels'].notnull()]
+    location_db = pd.read_csv('data/location_ids_v2.csv')
+    db = pd.merge(mask_db, location_db, left_on='ImageId', right_on='ImageId')
+    location_ids = db['BigImageId'].unique()
+    fold_ids = np.random.randint(0, num_folds, len(location_ids))
+    mapping = dict(zip(location_ids, fold_ids))
+    db['FoldId'] = db['BigImageId'].map(mapping)
+    return db['ImageId'].values, db['FoldId'].values
 
 def get_images_in(path):
     return np.sort(glob.glob(f'{path}/*.jpg'))
@@ -23,26 +24,8 @@ def get_images_in(path):
 def read_image(path):
     return cv2.cvtColor(cv2.imread(path), cv2.COLOR_BGR2RGB)
 
-def read_image_cached(cache, preprocess, path):
-    image = cache.get(path)
-    if image is not None:
-        return image
-    else:
-        image = preprocess(read_image(path))
-        cache[path] = image
-        return image
-
-def resize(size, image):
-    return cv2.resize(image, size, interpolation=cv2.INTER_NEAREST)
-
-def normalize(image):
-    return (image.astype(np.float32) / 255 - [0.485, 0.456, 0.406]) / [0.229, 0.224, 0.225]
-
-def channels_first(image):
-    return np.moveaxis(image, 2, 0)
-
 def encode_rle(mask):
-    pixels = mask.flatten()
+    pixels = mask.T.flatten()
     pixels = np.concatenate([[0], pixels, [0]])
     runs = np.where(pixels[1:] != pixels[:-1])[0] + 1
     runs[1::2] -= runs[::2]
@@ -87,90 +70,6 @@ def load_mask(mask_db, shape, image_path):
     for i, encoded_mask in enumerate(mask_db[mask_db['ImageId'] == image_id]['EncodedPixels'].fillna('nan')):
         labelled_mask[decode_rle(shape, encoded_mask) == 1] = i + 1
     return labelled_mask.astype(np.uint8)
-
-def load_mask_cached(cache, preprocess, mask_db, shape, path):
-    mask = cache.get(path)
-    if mask is not None:
-        return mask
-    else:
-        mask = preprocess(load_mask(mask_db, shape, path))
-        cache[path] = mask
-        return mask
-
-def crop(top, left, shape, image):
-    return image[top:top + shape[0], left:left + shape[1]].copy()
-
-def make_random_cropper(crop_shape, image_shape):
-    top = np.random.randint(image_shape[0] - crop_shape[0])
-    left = np.random.randint(image_shape[1] - crop_shape[1])
-    return partial(crop, top, left, crop_shape)
-
-def mask_to_bbox(mask):
-    a = np.where(mask != 0)
-    return np.array([np.min(a[0]), np.min(a[1]), np.max(a[1]), np.max(a[0])])
-
-def random_crop_containing(crop_shape, image_shape, bbox):
-    bbox_top, bbox_left, bbox_right, bbox_bottom = bbox
-    top = max(bbox_bottom - crop_shape[0], 0)
-    bottom = min(bbox_top + crop_shape[0], image_shape[0])
-    left = max(bbox_right - crop_shape[1], 0)
-    right = min(bbox_left + crop_shape[1], image_shape[1])
-    top_shift = np.random.randint(max(bottom - top - crop_shape[0] + 1, 1))
-    left_shift = np.random.randint(max(right - left - crop_shape[1] + 1, 1))
-    return top + top_shift, left + left_shift, (crop_shape)
-
-def pipeline(mask_db, cache, mask_cache, path):
-    preprocess = lambda image: image
-    image = read_image_cached(cache, preprocess, path)
-    labelled_mask = load_mask_cached(mask_cache, preprocess, mask_db, (768, 768), path)
-    random_mask_label = np.random.randint(labelled_mask.max()) + 1
-    instance_mask = labelled_mask.copy()
-    instance_mask[instance_mask != random_mask_label] = 0
-    mask_bbox = mask_to_bbox(instance_mask)
-    top, left, crop_shape = random_crop_containing((224, 224), (768, 768), mask_bbox)
-    image = crop(top, left, crop_shape, image)
-    image = normalize(image)
-    image = channels_first(image)
-    mask = crop(top, left, crop_shape, labelled_mask)
-    return image, mask
-
-def confusion_matrix(pred_labels, true_labels, labels):
-    pred_labels = pred_labels.reshape(-1)
-    true_labels = true_labels.reshape(-1)
-    columns = [list(map(lambda label: f'Pred {label}', labels))]
-    for true_label in labels:
-        counts = []
-        preds_for_label = pred_labels[np.argwhere(true_labels == true_label)]
-        for predicted_label in labels:
-            counts.append((preds_for_label == predicted_label).sum())
-        columns.append(counts)
-
-    headers = list(map(lambda label: f'True {label}', labels))
-    rows = np.column_stack(columns)
-    return tabulate(rows, headers, 'grid')
-
-def visualize_predictions(image_logger, logits, gt):
-    num_samples = min(len(gt), 8)
-    gt = gt[:num_samples]
-    logits = logits[:num_samples]
-    logits -= np.expand_dims(np.max(logits, axis=1), axis=1)
-    probs = (np.exp(logits) / np.expand_dims(np.sum(np.exp(logits), axis=1), axis=1))[:, 1, :, :]
-
-    for i in range(num_samples):
-        plt.subplot(2, num_samples, i + 1)
-        plt.imshow(probs[i])
-        plt.subplot(2, num_samples, num_samples + i + 1)
-        plt.imshow(gt[i])
-    plt.gcf().tight_layout()
-    plt.subplots_adjust(hspace=0.1, wspace=0.1)
-    image_logger(plt.gcf())
-
-def visualize_learning_curve(image_logger, train_losses, val_losses):
-    plt.plot(train_losses, label='Train Loss')
-    plt.plot(val_losses, label='Val Loss')
-    plt.plot(np.array(train_losses) - np.array(val_losses), label='Generalization Error')
-    plt.legend()
-    image_logger(plt.gcf())
 
 def get_mask_db(path):
     return pd.read_csv(path)
