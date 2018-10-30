@@ -4,6 +4,7 @@ from multiprocessing.pool import ThreadPool
 
 import numpy as np
 
+from airbus.pipelines import test_pipeline
 from airbus.pipelines import train_pipeline
 from airbus.pipelines import validation_pipeline
 from airbus.utils import get_images_in
@@ -65,7 +66,5 @@ def get_train_generator(num_folds, fold_ids, batch_size, limit=None):
     return DataGenerator(image_paths[:limit], batch_size, transform, drop_last=True)
 
 def get_test_generator(batch_size, limit=None):
-    mask_db = get_mask_db('data/train_ship_segmentations_v2.csv')
     image_paths = get_images_in('data/test')
-    transform = partial(validation_pipeline, {}, mask_db)
-    return DataGenerator(image_paths[:limit], batch_size, transform, shuffle=False)
+    return DataGenerator(image_paths[:limit], batch_size, test_pipeline, shuffle=False)

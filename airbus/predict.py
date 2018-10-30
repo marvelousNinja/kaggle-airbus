@@ -35,7 +35,7 @@ def predict(checkpoint_path, batch_size=1, limit=None):
                 records.append((_id, None))
             else:
                 for instance_mask in instance_masks:
-                    records.append((_id, encode_rle(resize((768, 768), instance_mask))))
+                    records.append((_id, encode_rle(instance_mask)))
 
     image_ids, encoded_pixels = zip(*records)
     df = pd.DataFrame({'ImageId': image_ids, 'EncodedPixels': encoded_pixels})

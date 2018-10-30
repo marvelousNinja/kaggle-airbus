@@ -16,7 +16,9 @@ from airbus.callbacks.weight_grid import WeightGrid
 from airbus.generators import get_train_generator
 from airbus.generators import get_validation_generator
 from airbus.loggers import make_loggers
+from airbus.losses import lovasz_hinge_loss
 from airbus.metrics import mean_iou
+from airbus.metrics import f2_score
 from airbus.models.devilnet import Devilnet
 from airbus.training import fit_model
 from airbus.utils import as_cuda
@@ -25,12 +27,7 @@ def loss_surface_fn(outputs, labels):
     return torch.nn.functional.binary_cross_entropy_with_logits(outputs.squeeze(), labels, reduction='none')
 
 def compute_loss(logits, labels):
-    probs = torch.sigmoid(logits)[:, 0, :, :]
-    labels = labels.float()
-    intersection = (probs * labels).sum((1, 2))
-    pred_volume = probs.sum((1, 2))
-    true_volume = labels.sum((1, 2))
-    return (1 - 2 * intersection / (pred_volume + true_volume + 1.0)).mean()
+    return lovasz_hinge_loss(logits, labels)
 
 def fit(
         num_epochs=100,
@@ -58,17 +55,17 @@ def fit(
     optimizer = torch.optim.SGD(filter(lambda param: param.requires_grad, model.parameters()), lr, weight_decay=1e-3, momentum=0.9, nesterov=True)
     train_generator = get_train_generator(num_folds, train_fold_ids, batch_size, limit)
     callbacks = [
-        ModelCheckpoint(model, type(model).__name__.lower(), 'val_mean_f2', 'max', logger),
+        ModelCheckpoint(model, type(model).__name__.lower(), 'val_f2_score', 'max', logger),
         # CyclicLR(step_size=len(train_generator) * 2, min_lr=0.0001, max_lr=0.005, optimizer=optimizer, logger=logger),
         # LRSchedule(optimizer, [(0, 0.003), (2, 0.01), (12, 0.001), (17, 0.0001)], logger),
         # LRRangeTest(0.00001, 1.0, 20000, optimizer, image_logger),
-        LROnPlateau('val_mean_f2', optimizer, mode='max', factor=0.5, patience=8, min_lr=0, logger=logger),
+        LROnPlateau('val_f2_score', optimizer, mode='max', factor=0.5, patience=8, min_lr=0, logger=logger),
         # ConfusionMatrix([0, 1], logger)
     ]
 
     if visualize:
         callbacks.extend([
-            LearningCurve(['train_loss', 'val_loss', 'train_mean_iou', 'val_mean_iou'], image_logger),
+            LearningCurve(['train_loss', 'val_loss', 'train_mean_iou', 'val_mean_iou', 'train_f2_score', 'val_f2_score'], image_logger),
             PredictionGrid(80, image_logger, mean_iou),
             Histogram(image_logger, mean_iou),
             WeightGrid(model, image_logger, 32)
@@ -83,7 +80,7 @@ def fit(
         num_epochs=num_epochs,
         logger=logger,
         callbacks=callbacks,
-        metrics=[mean_iou]
+        metrics=[mean_iou, f2_score]
     )
 
 def prof():
