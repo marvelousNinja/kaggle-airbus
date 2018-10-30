@@ -1,9 +1,12 @@
 import numpy as np
 import torch
+import torchvision
+from tabulate import tabulate
 from tqdm import tqdm
 
 from airbus.utils import from_numpy
 from airbus.utils import to_numpy
+from airbus.utils import as_cuda
 
 def fit_model(
         model,
@@ -13,27 +16,34 @@ def fit_model(
         loss_fn,
         num_epochs,
         logger,
-        on_validation_end=None,
-        on_batch_end=None
+        callbacks=[],
+        metrics=[]
     ):
 
     for epoch in tqdm(range(num_epochs)):
-        train_loss = 0
         num_batches = len(train_generator)
+        logs = {}
+        logs['train_loss'] = 0
+        for func in metrics: logs[f'train_{func.__name__}'] = 0
         model.train()
         torch.set_grad_enabled(True)
+        for callback in callbacks: callback.on_train_begin()
         for inputs, gt in tqdm(train_generator, total=num_batches):
             inputs, gt = from_numpy(inputs), from_numpy(gt)
             optimizer.zero_grad()
-            loss = loss_fn(model(inputs), gt)
+            outputs = model(inputs)
+            loss = loss_fn(outputs, gt)
             loss.backward()
             optimizer.step()
-            train_loss += loss.data[0]
-            if on_batch_end: on_batch_end()
+            logs['train_loss'] += loss.data[0]
+            for func in metrics: logs[f'train_{func.__name__}'] += func(outputs.detach(), gt)
+            for callback in callbacks: callback.on_train_batch_end(loss.data[0])
 
-        train_loss /= num_batches
+        logs['train_loss'] /= num_batches
+        for func in metrics: logs[f'train_{func.__name__}'] /= num_batches
 
-        val_loss = 0
+        logs['val_loss'] = 0
+        for func in metrics: logs[f'val_{func.__name__}'] = 0
         all_outputs = []
         all_gt = []
         num_batches = len(validation_generator)
@@ -43,11 +53,31 @@ def fit_model(
             all_gt.append(gt)
             inputs, gt = from_numpy(inputs), from_numpy(gt)
             outputs = model(inputs)
-            val_loss += loss_fn(outputs, gt).data[0]
-            all_outputs.append(to_numpy(outputs))
-        val_loss /= num_batches
+            # TODO AS: Extract as cmd opt
+            flipped_outputs = torch.sigmoid(model(inputs.flip(dims=(3,))).flip(dims=(3,)))
+            outputs = torch.sigmoid(outputs)
+            outputs = (outputs + flipped_outputs) / 2
+            outputs = torch.log(outputs / (1 - outputs))
+            logs['val_loss'] += loss_fn(outputs, gt).data[0]
+            for func in metrics: logs[f'val_{func.__name__}'] += func(outputs.detach(), gt)
 
-        if on_validation_end:
-            on_validation_end(train_loss, val_loss, np.concatenate(all_outputs), np.concatenate(all_gt))
+            if isinstance(outputs, tuple):
+                all_outputs.append(list(map(to_numpy, outputs)))
+            else:
+                all_outputs.append(to_numpy(outputs))
+        logs['val_loss'] /= num_batches
+        for func in metrics: logs[f'val_{func.__name__}'] /= num_batches
 
-        logger(f'epoch {epoch} train loss {train_loss:.5f} - val loss {val_loss:.5f}')
+        if isinstance(all_outputs[0], tuple):
+            all_outputs = list(map(np.concatenate, zip(*all_outputs)))
+        else:
+            all_outputs = np.concatenate(all_outputs)
+
+        all_gt = np.concatenate(all_gt)
+        for callback in callbacks: callback.on_validation_end(logs, all_outputs, all_gt)
+
+        epoch_rows = [['epoch', epoch]]
+        for name, value in logs.items():
+            epoch_rows.append([name, f'{value:.3f}'])
+
+        logger(tabulate(epoch_rows))

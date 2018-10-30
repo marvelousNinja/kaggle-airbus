@@ -1,52 +1,50 @@
-import io
-from functools import partial
-
 import torch
-import telegram_send
 import numpy as np
 import matplotlib; matplotlib.use('agg')
-import matplotlib.pyplot as plt
 from fire import Fire
 
-from airbus.cyclic_lr import CyclicLR
+from airbus.callbacks.cyclic_lr import CyclicLR
+from airbus.callbacks.learning_curve import LearningCurve
+from airbus.callbacks.lr_on_plateau import LROnPlateau
+from airbus.callbacks.lr_range_test import LRRangeTest
+from airbus.callbacks.lr_schedule import LRSchedule
+from airbus.callbacks.histogram import Histogram
+from airbus.callbacks.model_checkpoint import ModelCheckpoint
+from airbus.callbacks.model_checkpoint import load_checkpoint
+from airbus.callbacks.prediction_grid import PredictionGrid
+from airbus.callbacks.weight_grid import WeightGrid
 from airbus.generators import get_train_generator
 from airbus.generators import get_validation_generator
-from airbus.f_score import f2_score
-from airbus.linknet import Linknet
-from airbus.losses import jaccard_loss
-from airbus.model_checkpoint import ModelCheckpoint
-from airbus.model_checkpoint import load_checkpoint
 from airbus.loggers import make_loggers
+from airbus.metrics import mean_iou
+from airbus.models.devilnet import Devilnet
 from airbus.training import fit_model
 from airbus.utils import as_cuda
-from airbus.utils import confusion_matrix
-from airbus.utils import extract_instance_masks_from_binary_mask
-from airbus.utils import extract_instance_masks_from_labelled_mask
-from airbus.utils import visualize_learning_curve
-from airbus.utils import visualize_predictions
+
+def loss_surface_fn(outputs, labels):
+    return torch.nn.functional.binary_cross_entropy_with_logits(outputs.squeeze(), labels, reduction='none')
 
 def compute_loss(logits, labels):
-    labels[labels > 1] = 1
-    return jaccard_loss(logits, labels) * 0.5 + torch.nn.functional.cross_entropy(logits, labels.long()) * 0.5
+    probs = torch.sigmoid(logits)[:, 0, :, :]
+    labels = labels.float()
+    intersection = (probs * labels).sum((1, 2))
+    pred_volume = probs.sum((1, 2))
+    true_volume = labels.sum((1, 2))
+    return (1 - 2 * intersection / (pred_volume + true_volume + 1.0)).mean()
 
-def calc_f2_score(logits, labelled_masks):
-    binary_masks = np.argmax(logits, axis=1)
-    pred_masks = list(extract_instance_masks_from_binary_mask(mask) for mask in binary_masks)
-    true_masks = list(extract_instance_masks_from_labelled_mask(mask) for mask in labelled_masks)
-    return f2_score(pred_masks, true_masks)
-
-def on_validation_end(history, visualize, image_logger, logger, model_checkpoint, train_loss, val_loss, logits, gt):
-    logger(f'F2 Score: {calc_f2_score(logits, gt)}')
-    gt[gt > 1] = 1
-    if visualize:
-        history.setdefault('train_losses', []).append(train_loss)
-        history.setdefault('val_losses', []).append(val_loss)
-        visualize_predictions(image_logger, logits, gt)
-        visualize_learning_curve(image_logger, history['train_losses'], history['val_losses'])
-    logger(confusion_matrix(np.argmax(logits, axis=1), gt, [0, 1]))
-    model_checkpoint.step(val_loss)
-
-def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None, telegram=False, visualize=False):
+def fit(
+        num_epochs=100,
+        limit=None,
+        validation_limit=None,
+        batch_size=16,
+        lr=.005,
+        checkpoint_path=None,
+        telegram=False,
+        visualize=False,
+        num_folds=5,
+        train_fold_ids=[0, 1, 2, 3],
+        validation_fold_ids=[4]
+    ):
     torch.backends.cudnn.benchmark = True
     np.random.seed(1991)
     logger, image_logger = make_loggers(telegram)
@@ -54,25 +52,38 @@ def fit(num_epochs=100, limit=None, batch_size=16, lr=.001, checkpoint_path=None
     if checkpoint_path:
         model = load_checkpoint(checkpoint_path)
     else:
-        model = Linknet(2)
+        model = Devilnet(1)
 
     model = as_cuda(model)
-    optimizer = torch.optim.Adam(filter(lambda param: param.requires_grad, model.parameters()), lr)
-    model_checkpoint = ModelCheckpoint(model, 'linknet', logger)
-    train_generator = get_train_generator(batch_size, limit)
-    cyclic_lr = CyclicLR(cycle_iterations=len(train_generator) * 2, min_lr=0.0001, max_lr=0.005, optimizer=optimizer, logger=logger)
-    history = {}
+    optimizer = torch.optim.SGD(filter(lambda param: param.requires_grad, model.parameters()), lr, weight_decay=1e-3, momentum=0.9, nesterov=True)
+    train_generator = get_train_generator(num_folds, train_fold_ids, batch_size, limit)
+    callbacks = [
+        ModelCheckpoint(model, type(model).__name__.lower(), 'val_mean_f2', 'max', logger),
+        # CyclicLR(step_size=len(train_generator) * 2, min_lr=0.0001, max_lr=0.005, optimizer=optimizer, logger=logger),
+        # LRSchedule(optimizer, [(0, 0.003), (2, 0.01), (12, 0.001), (17, 0.0001)], logger),
+        # LRRangeTest(0.00001, 1.0, 20000, optimizer, image_logger),
+        LROnPlateau('val_mean_f2', optimizer, mode='max', factor=0.5, patience=8, min_lr=0, logger=logger),
+        # ConfusionMatrix([0, 1], logger)
+    ]
+
+    if visualize:
+        callbacks.extend([
+            LearningCurve(['train_loss', 'val_loss', 'train_mean_iou', 'val_mean_iou'], image_logger),
+            PredictionGrid(80, image_logger, mean_iou),
+            Histogram(image_logger, mean_iou),
+            WeightGrid(model, image_logger, 32)
+        ])
 
     fit_model(
         model=model,
         train_generator=train_generator,
-        validation_generator=get_validation_generator(batch_size, 160),
+        validation_generator=get_validation_generator(num_folds, validation_fold_ids, batch_size, validation_limit),
         optimizer=optimizer,
         loss_fn=compute_loss,
         num_epochs=num_epochs,
-        on_validation_end=partial(on_validation_end, history, visualize, image_logger, logger, model_checkpoint),
-        on_batch_end=cyclic_lr.step,
-        logger=logger
+        logger=logger,
+        callbacks=callbacks,
+        metrics=[mean_iou]
     )
 
 def prof():

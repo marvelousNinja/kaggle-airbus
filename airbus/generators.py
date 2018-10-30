@@ -8,7 +8,7 @@ from airbus.pipelines import train_pipeline
 from airbus.pipelines import validation_pipeline
 from airbus.utils import get_images_in
 from airbus.utils import get_mask_db
-from airbus.utils import get_area_stratified_split
+from airbus.utils import get_fold_split
 
 class DataGenerator:
     def __init__(self, records, batch_size, transform, shuffle=True, drop_last=False):
@@ -49,23 +49,23 @@ class DataGenerator:
             return math.ceil(num_batches)
 
 def get_validation_generator(num_folds, fold_ids, batch_size, limit=None):
-    mask_db = get_mask_db('data/train.csv')
-    all_image_ids, all_fold_ids = get_area_stratified_split(mask_db, num_folds)
+    mask_db = get_mask_db('data/train_ship_segmentations_v2.csv')
+    all_image_ids, all_fold_ids = get_fold_split(mask_db, num_folds)
     image_ids = all_image_ids[np.isin(all_fold_ids, fold_ids)]
-    image_paths = list(map(lambda id: f'data/train/images/{id}.png', image_ids))
+    image_paths = list(map(lambda id: f'data/train/{id}', image_ids))
     transform = partial(validation_pipeline, {}, mask_db)
     return DataGenerator(image_paths[:limit], batch_size, transform, shuffle=False, drop_last=True)
 
 def get_train_generator(num_folds, fold_ids, batch_size, limit=None):
-    mask_db = get_mask_db('data/train.csv')
-    all_image_ids, all_fold_ids = get_area_stratified_split(mask_db, num_folds)
+    mask_db = get_mask_db('data/train_ship_segmentations_v2.csv')
+    all_image_ids, all_fold_ids = get_fold_split(mask_db, num_folds)
     image_ids = all_image_ids[np.isin(all_fold_ids, fold_ids)]
-    image_paths = list(map(lambda id: f'data/train/images/{id}.png', image_ids))
+    image_paths = list(map(lambda id: f'data/train/{id}', image_ids))
     transform = partial(train_pipeline, {}, mask_db)
     return DataGenerator(image_paths[:limit], batch_size, transform, drop_last=True)
 
 def get_test_generator(batch_size, limit=None):
-    mask_db = get_mask_db('data/train.csv')
-    image_paths = get_images_in('data/test/images')
+    mask_db = get_mask_db('data/train_ship_segmentations_v2.csv')
+    image_paths = get_images_in('data/test')
     transform = partial(validation_pipeline, {}, mask_db)
     return DataGenerator(image_paths[:limit], batch_size, transform, shuffle=False)
