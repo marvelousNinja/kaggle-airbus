@@ -27,6 +27,8 @@ def loss_surface_fn(outputs, labels):
     return torch.nn.functional.binary_cross_entropy_with_logits(outputs.squeeze(), labels, reduction='none')
 
 def compute_loss(logits, labels):
+    labels = labels.clone()
+    labels[labels > 1] = 1
     return lovasz_hinge_loss(logits, labels)
 
 def fit(
