@@ -1,6 +1,17 @@
 from itertools import product
 
 import numpy as np
+import torch
+
+def mean_iou(outputs, gt, average=True):
+    smooth = 1e-12
+    preds = torch.sigmoid(outputs).round().long()
+    pred_masks = preds[:, 0, :, :]
+    true_masks = gt.long()
+    intersection = (pred_masks & true_masks).sum(dim=(1, 2)).float()
+    union = (pred_masks | true_masks).sum(dim=(1, 2)).float()
+    values = ((intersection + smooth) / (union + smooth))
+    return values.mean() if average else values
 
 def calculate_iou(masks, other_masks):
     ious = []
