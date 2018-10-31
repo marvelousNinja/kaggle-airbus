@@ -60,8 +60,7 @@ class Devilnet(torch.nn.Module):
 
         self.encoders = torch.nn.ModuleList([
             torch.nn.Sequential(
-                #self.resnet.conv1,
-                torch.nn.Conv2d(3, 64, kernel_size=3, padding=1),
+                self.resnet.conv1,
                 self.resnet.bn1,
                 self.resnet.relu
                 # Maxpool removed intentionally
@@ -117,10 +116,10 @@ class Devilnet(torch.nn.Module):
         d2 = self.decoders[3](torch.cat([self.upscalers[3](d3), x1], dim=1))
 
         f = torch.cat([
-            d2,
-            torch.nn.functional.interpolate(d3, scale_factor=2, mode='bilinear', align_corners=False),
-            torch.nn.functional.interpolate(d4, scale_factor=4, mode='bilinear', align_corners=False),
-            torch.nn.functional.interpolate(d5, scale_factor=8, mode='bilinear', align_corners=False)
+            torch.nn.functional.interpolate(d2, scale_factor=2, mode='bilinear', align_corners=False),
+            torch.nn.functional.interpolate(d3, scale_factor=4, mode='bilinear', align_corners=False),
+            torch.nn.functional.interpolate(d4, scale_factor=8, mode='bilinear', align_corners=False),
+            torch.nn.functional.interpolate(d5, scale_factor=16, mode='bilinear', align_corners=False)
         ], dim=1)
 
         return self.classifier(f)
