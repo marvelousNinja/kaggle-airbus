@@ -27,16 +27,16 @@ class ChannelsFirst:
         args['image'] = channels_first(args['image'])
         return args
 
-def train_pipeline(cache, mask_db, path):
-    image, mask = read_image_and_mask_cached(cache, mask_db, path)
+def train_pipeline(mask_db, path):
+    image, mask = read_image_and_mask(mask_db, path)
     args = Compose([
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ChannelsFirst()
     ])(image=image, mask=mask)
     return args['image'], args.get('mask')
 
-def validation_pipeline(cache, mask_db, path):
-    image, mask = read_image_and_mask_cached(cache, mask_db, path)
+def validation_pipeline(mask_db, path):
+    image, mask = read_image_and_mask(mask_db, path)
     args = Compose([
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ChannelsFirst()

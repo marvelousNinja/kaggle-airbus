@@ -23,7 +23,7 @@ class DataGenerator:
         if self.shuffle: np.random.shuffle(self.records)
         batch = []
         pool = ThreadPool()
-        prefetch_size = 2000
+        prefetch_size = 10000
         num_slices = len(self.records) // prefetch_size + 1
 
         for i in range(num_slices):
@@ -54,7 +54,7 @@ def get_validation_generator(num_folds, fold_ids, batch_size, limit=None):
     all_image_ids, all_fold_ids = get_fold_split(mask_db, num_folds)
     image_ids = all_image_ids[np.isin(all_fold_ids, fold_ids)]
     image_paths = list(map(lambda id: f'data/train/{id}', image_ids))
-    transform = partial(validation_pipeline, {}, mask_db)
+    transform = partial(validation_pipeline, mask_db)
     return DataGenerator(image_paths[:limit], batch_size, transform, shuffle=False, drop_last=True)
 
 def get_train_generator(num_folds, fold_ids, batch_size, limit=None):
@@ -62,7 +62,7 @@ def get_train_generator(num_folds, fold_ids, batch_size, limit=None):
     all_image_ids, all_fold_ids = get_fold_split(mask_db, num_folds)
     image_ids = all_image_ids[np.isin(all_fold_ids, fold_ids)]
     image_paths = list(map(lambda id: f'data/train/{id}', image_ids))
-    transform = partial(train_pipeline, {}, mask_db)
+    transform = partial(train_pipeline, mask_db)
     return DataGenerator(image_paths[:limit], batch_size, transform, drop_last=True)
 
 def get_test_generator(batch_size, limit=None):
