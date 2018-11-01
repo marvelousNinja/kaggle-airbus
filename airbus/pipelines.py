@@ -49,4 +49,4 @@ def test_pipeline(path):
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ChannelsFirst()
     ])(image=image)
-    return args['image']
+    return args['image'], None

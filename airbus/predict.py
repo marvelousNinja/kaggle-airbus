@@ -4,17 +4,16 @@ import torch
 from fire import Fire
 from tqdm import tqdm
 
-from airbus.model_checkpoint import load_checkpoint
+from airbus.callbacks.model_checkpoint import load_checkpoint
 from airbus.generators import get_test_generator
 from airbus.utils import as_cuda
 from airbus.utils import encode_rle
 from airbus.utils import extract_instance_masks_from_binary_mask
 from airbus.utils import from_numpy
 from airbus.utils import get_images_in
-from airbus.utils import resize
 from airbus.utils import to_numpy
 
-def predict(checkpoint_path, batch_size=1, limit=None):
+def predict(checkpoint_path, batch_size=1, limit=None, tta=False):
     model = load_checkpoint(checkpoint_path)
     model = as_cuda(model)
     torch.set_grad_enabled(False)
@@ -26,7 +25,10 @@ def predict(checkpoint_path, batch_size=1, limit=None):
     for inputs, _ in tqdm(test_generator, total=len(test_generator)):
         inputs = from_numpy(inputs)
         outputs = model(inputs)
-        masks = to_numpy(torch.argmax(outputs, dim=1))
+        if tta:
+            flipped_outputs = model(inputs.flip(dims=(3,)))
+            outputs = (torch.sigmoid(outputs) + torch.sigmoid(flipped_outputs.flip(dims=(3,)))) / 2
+        masks = to_numpy(outputs[:, 0, :, :].round().long())
         for mask in masks:
             _id = ids.pop(0)
             instance_masks = extract_instance_masks_from_binary_mask(mask)
