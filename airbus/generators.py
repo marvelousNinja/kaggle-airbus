@@ -23,13 +23,13 @@ class DataGenerator:
         if self.shuffle: np.random.shuffle(self.records)
         batch = []
         pool = ThreadPool()
-        prefetch_size = 10000
+        prefetch_size = 2000
         num_slices = len(self.records) // prefetch_size + 1
 
         for i in range(num_slices):
             start = i * prefetch_size
             end = start + prefetch_size
-            for output in pool.imap(self.transform, self.records[start:end]):
+            for output in pool.imap(self.transform, self.records[start:end], chunksize=200):
                 batch.append(output)
                 if len(batch) >= self.batch_size:
                     split_outputs = list(zip(*batch))

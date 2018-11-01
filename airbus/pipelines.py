@@ -13,8 +13,7 @@ def resize(size, interpolation, image):
 def read_image_and_mask(mask_db, path):
     image = read_image(path)
     mask = load_mask(mask_db, image.shape[:2], path)
-    args = Crop(0, 0, 256, 256)(image=image, mask=mask)
-    return args['image'], args.get('mask')
+    return image, mask
 
 def read_image_and_mask_cached(cache, mask_db, path):
     if cache.get(path): return cache[path]
@@ -30,6 +29,7 @@ class ChannelsFirst:
 def train_pipeline(mask_db, path):
     image, mask = read_image_and_mask(mask_db, path)
     args = Compose([
+        Crop(0, 0, 256, 256),
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ChannelsFirst()
     ])(image=image, mask=mask)
