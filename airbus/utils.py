@@ -10,6 +10,7 @@ def get_fold_split(mask_db, num_folds):
     # TODO AS: Utilize non-empty images
     np.random.seed(1991)
     mask_db = mask_db[mask_db['EncodedPixels'].notnull()]
+    mask_db = mask_db.drop_duplicates(['ImageId'])
     location_db = pd.read_csv('data/location_ids_v2.csv')
     db = pd.merge(mask_db, location_db, left_on='ImageId', right_on='ImageId')
     location_ids = db['BigImageId'].unique()
