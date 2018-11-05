@@ -61,7 +61,7 @@ def fit(
         # CyclicLR(step_size=len(train_generator) * 2, min_lr=0.0001, max_lr=0.005, optimizer=optimizer, logger=logger),
         # LRSchedule(optimizer, [(0, 0.003), (2, 0.01), (12, 0.001), (17, 0.0001)], logger),
         # LRRangeTest(0.00001, 1.0, 20000, optimizer, image_logger),
-        LROnPlateau('val_f2_score', optimizer, mode='max', factor=0.5, patience=8, min_lr=0, logger=logger),
+        LROnPlateau('val_f2_score', optimizer, mode='max', factor=0.2, patience=4, min_lr=0, logger=logger),
         # ConfusionMatrix([0, 1], logger)
     ]
 
@@ -76,7 +76,7 @@ def fit(
     fit_model(
         model=model,
         train_generator=train_generator,
-        validation_generator=get_validation_generator(num_folds, validation_fold_ids, batch_size, validation_limit),
+        validation_generator=get_validation_generator(num_folds, validation_fold_ids, 2, validation_limit),
         optimizer=optimizer,
         loss_fn=compute_loss,
         num_epochs=num_epochs,

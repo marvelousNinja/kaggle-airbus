@@ -6,9 +6,6 @@ from airbus.utils import from_numpy
 from airbus.utils import to_numpy
 
 def visualize_predictions(image_logger, max_samples, metric_fn, logits, gt):
-    # TODO AS: Cover this inside of the metric
-    gt = gt.copy()
-    gt[gt > 1] = 1
     num_samples = min(len(gt), max_samples)
     metrics = to_numpy(metric_fn(from_numpy(logits), from_numpy(gt), average=False))
     order = np.argsort(metrics)

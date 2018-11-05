@@ -29,7 +29,7 @@ class DataGenerator:
         for i in range(num_slices):
             start = i * prefetch_size
             end = start + prefetch_size
-            for output in pool.imap(self.transform, self.records[start:end], chunksize=200):
+            for output in pool.imap(self.transform, self.records[start:end]):
                 batch.append(output)
                 if len(batch) >= self.batch_size:
                     split_outputs = list(zip(*batch))

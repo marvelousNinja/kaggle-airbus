@@ -8,10 +8,10 @@ from airbus.utils import extract_instance_masks_from_labelled_mask
 from airbus.utils import to_numpy
 
 def mean_iou(outputs, gt, average=True):
+    true_masks = (gt > 0).long()
     smooth = 1e-12
     preds = torch.sigmoid(outputs).round().long()
     pred_masks = preds[:, 0, :, :]
-    true_masks = gt.long()
     intersection = (pred_masks & true_masks).sum(dim=(1, 2)).float()
     union = (pred_masks | true_masks).sum(dim=(1, 2)).float()
     values = ((intersection + smooth) / (union + smooth))
