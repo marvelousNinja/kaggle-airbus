@@ -36,7 +36,7 @@ def fit_model(
             loss.backward()
             optimizer.step()
             logs['train_loss'] += loss.data[0]
-            for func in metrics: logs[f'train_{func.__name__}'] += func(outputs.detach(), gt)
+            for func in metrics: logs[f'train_{func.__name__}'] += func(outputs, gt)
             for callback in callbacks: callback.on_train_batch_end(loss.data[0])
 
         logs['train_loss'] /= num_batches
@@ -53,16 +53,12 @@ def fit_model(
             all_gt.append(gt)
             inputs, gt = from_numpy(inputs), from_numpy(gt)
             outputs = model(inputs)
-            # TODO AS: Extract as cmd opt
-            flipped_outputs = torch.sigmoid(model(inputs.flip(dims=(3,))).flip(dims=(3,)))
-            outputs = torch.sigmoid(outputs)
-            outputs = (outputs + flipped_outputs) / 2
-            outputs = torch.log(outputs / (1 - outputs))
+
             logs['val_loss'] += loss_fn(outputs, gt).data[0]
-            for func in metrics: logs[f'val_{func.__name__}'] += func(outputs.detach(), gt)
+            for func in metrics: logs[f'val_{func.__name__}'] += func(outputs, gt)
 
             if isinstance(outputs, tuple):
-                all_outputs.append(list(map(to_numpy, outputs)))
+                all_outputs.append(tuple(map(to_numpy, outputs)))
             else:
                 all_outputs.append(to_numpy(outputs))
         logs['val_loss'] /= num_batches
