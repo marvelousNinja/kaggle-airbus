@@ -27,9 +27,15 @@ def loss_surface_fn(outputs, labels):
     return torch.nn.functional.binary_cross_entropy_with_logits(outputs.squeeze(), labels, reduction='none')
 
 def compute_loss(logits, labels):
+    mask_logits, image_logits = logits
     labels = labels.clone()
     labels[labels > 1] = 1
-    return lovasz_hinge_loss(logits, labels)
+    mask_presence_labels = (labels.sum(dim=(1, 2)) > 0)
+    mask_presence_indices = mask_presence_labels.nonzero().view(-1)
+    loss = torch.nn.functional.binary_cross_entropy_with_logits(image_logits, mask_presence_labels.float()[:, None])
+    if len(mask_presence_indices) > 0:
+        loss += lovasz_hinge_loss(mask_logits[mask_presence_indices], labels[mask_presence_indices])
+    return loss
 
 def fit(
         num_epochs=100,
