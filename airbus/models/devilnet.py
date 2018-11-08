@@ -47,6 +47,16 @@ class Decoder(torch.nn.Module):
     def forward(self, x):
         return self.scse(self.relu(self.layers(x) + self.downsampler(x)))
 
+class ImageClassifier(torch.nn.Module):
+    def __init__(self, in_channels, num_classes):
+        super().__init__()
+        self.pool = torch.nn.AdaptiveMaxPool2d(1)
+        self.linear = torch.nn.Linear(in_channels, num_classes)
+
+    def forward(self, x):
+        x = self.pool(x)
+        x = x.view(x.shape[0], -1)
+        return self.linear(x)
 
 class Devilnet(torch.nn.Module):
     def __init__(self, num_classes):
@@ -97,9 +107,11 @@ class Devilnet(torch.nn.Module):
             )
         ])
 
-        self.classifier = torch.nn.Sequential(
+        self.mask_classifier = torch.nn.Sequential(
             torch.nn.Conv2d(512, num_classes, 1)
         )
+
+        self.image_classifier = ImageClassifier(512, 1)
 
     def forward(self, x):
         x = self.encoders[0](x)
@@ -122,4 +134,4 @@ class Devilnet(torch.nn.Module):
             torch.nn.functional.interpolate(d5, scale_factor=16, mode='bilinear', align_corners=False)
         ], dim=1)
 
-        return self.classifier(f)
+        return self.mask_classifier(f), self.image_classifier(x4)
