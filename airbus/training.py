@@ -29,6 +29,7 @@ def fit_model(
         torch.set_grad_enabled(True)
         for callback in callbacks: callback.on_train_begin()
         for inputs, gt in tqdm(train_generator, total=num_batches):
+            if torch.cuda.is_available(): torch.cuda.empty_cache()
             inputs, gt = from_numpy(inputs), from_numpy(gt)
             optimizer.zero_grad()
             outputs = model(inputs)
@@ -50,6 +51,7 @@ def fit_model(
         model.eval()
         torch.set_grad_enabled(False)
         for inputs, gt in tqdm(validation_generator, total=num_batches):
+            if torch.cuda.is_available(): torch.cuda.empty_cache()
             all_gt.append(gt)
             inputs, gt = from_numpy(inputs), from_numpy(gt)
             outputs = model(inputs)
