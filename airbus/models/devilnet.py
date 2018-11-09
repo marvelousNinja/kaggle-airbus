@@ -114,6 +114,7 @@ class Devilnet(torch.nn.Module):
         self.image_classifier = ImageClassifier(512, 1)
 
     def forward(self, x):
+        x = x['image']
         x = self.encoders[0](x)
         x1 = self.encoders[1](x)
         x2 = self.encoders[2](x1)
@@ -134,4 +135,4 @@ class Devilnet(torch.nn.Module):
             torch.nn.functional.interpolate(d5, scale_factor=16, mode='bilinear', align_corners=False)
         ], dim=1)
 
-        return self.mask_classifier(f), self.image_classifier(x4)
+        return {'mask': self.mask_classifier(f), 'presence': self.image_classifier(x4)}

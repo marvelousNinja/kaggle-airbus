@@ -2,17 +2,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 
 from airbus.callbacks.callback import Callback
-from airbus.utils import from_numpy
 from airbus.utils import to_numpy
 
-def visualize_predictions(image_logger, max_samples, metric_fn, logits, gt):
-    num_samples = min(len(gt), max_samples)
-    metrics = to_numpy(metric_fn(from_numpy(logits), from_numpy(gt), average=False))
+def visualize_predictions(image_logger, max_samples, metrics, predictions_and_gt):
+    num_samples = min(len(metrics), max_samples)
     order = np.argsort(metrics)
-    gt = gt[order][:num_samples]
-    logits = logits[order][:num_samples]
-    metrics = metrics[order][:num_samples]
-    probs = 1 / (1 + np.exp(-logits.squeeze()))
+
+    # TODO AS: Clean this mess up
+    predictions_and_gt_ = []
+    for i in order:
+        predictions_and_gt_.append(predictions_and_gt[i])
+    predictions_and_gt = predictions_and_gt_
+    predictions_and_gt = predictions_and_gt[:num_samples]
+    # TODO AS: End of the mess
 
     samples_per_row = 16
     num_rows = int(np.ceil(num_samples / samples_per_row)) * 2
@@ -21,11 +23,11 @@ def visualize_predictions(image_logger, max_samples, metric_fn, logits, gt):
     for i in range(num_samples):
         plt.subplot(num_rows, samples_per_row, (i // samples_per_row) * samples_per_row + i + 1)
         plt.title(f'{metrics[i]:.1f}')
-        plt.imshow(probs[i], vmin=0, vmax=1)
+        plt.imshow(predictions_and_gt[i][0], vmin=0, vmax=1)
         plt.xticks([])
         plt.yticks([])
         plt.subplot(num_rows, samples_per_row, (i // samples_per_row + 1) * samples_per_row + i + 1)
-        plt.imshow(gt[i])
+        plt.imshow(predictions_and_gt[i][1])
         plt.xticks([])
         plt.yticks([])
     plt.gcf().tight_layout()
@@ -33,11 +35,22 @@ def visualize_predictions(image_logger, max_samples, metric_fn, logits, gt):
     image_logger(plt.gcf())
 
 class PredictionGrid(Callback):
-    def __init__(self, max_samples, image_logger, metric_fn):
+    def __init__(self, max_samples, image_logger, metric_fn, pred_fn):
         self.max_samples = max_samples
         self.image_logger = image_logger
         self.metric_fn = metric_fn
+        self.pred_fn = pred_fn
+        self.metrics = []
+        self.predictions_and_gt = []
 
-    def on_validation_end(self, logs, outputs, gt):
-        visualize_predictions(self.image_logger, self.max_samples, self.metric_fn, outputs, gt)
+    def on_train_begin(self, _):
+        self.metrics = []
+        self.predictions_and_gt = []
 
+    def on_validation_batch_end(self, logs, outputs, batch):
+        self.metrics.extend(to_numpy(self.metric_fn(outputs, batch, average=False)))
+        preds = to_numpy(self.pred_fn(outputs, batch))
+        for i in range(len(preds[0])): self.predictions_and_gt.append((preds[0][i], preds[1][i]))
+
+    def on_validation_end(self, _):
+        visualize_predictions(self.image_logger, self.max_samples, self.metrics, self.predictions_and_gt)

@@ -30,7 +30,7 @@ class ModelCheckpoint(Callback):
         timestamp = datetime.utcnow().strftime('%Y%m%d_%H%M')
         self.generate_checkpoint_path = partial(generate_checkpoint_path, prefix, timestamp)
 
-    def on_validation_end(self, logs, outputs, gt):
+    def on_validation_end(self, logs):
         value = logs[self.log_to_track]
         if self.mode == 'min':
             update_needed = self.value > value

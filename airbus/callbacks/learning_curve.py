@@ -9,7 +9,7 @@ class LearningCurve(Callback):
         self.logs_to_track = logs_to_track
         for name in logs_to_track: self.history[name] = []
 
-    def on_validation_end(self, logs, outputs, gt):
+    def on_validation_end(self, logs):
         for name in self.logs_to_track:
             self.history[name].append(logs[name])
             plt.plot(self.history[name], label=name)

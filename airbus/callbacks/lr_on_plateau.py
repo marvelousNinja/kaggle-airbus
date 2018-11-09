@@ -13,7 +13,7 @@ class LROnPlateau(Callback):
         self.logger = logger
         self.threshold = 1e-4
 
-    def on_validation_end(self, logs, outputs, gt):
+    def on_validation_end(self, logs):
         current_value = logs[self.log_to_track]
         if self.mode == 'min':
             value_improved = current_value < self.best_value * (1 - self.threshold)

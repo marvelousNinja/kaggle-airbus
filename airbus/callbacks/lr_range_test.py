@@ -14,20 +14,20 @@ class LRRangeTest(Callback):
         self.num_iter = num_iter
         self.optimizer = optimizer
 
-    def on_train_begin(self):
+    def on_train_begin(self, _):
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = self.current_lr
 
-    def on_train_batch_end(self, loss):
+    def on_train_batch_end(self, logs, *_):
         self.iter_counter += 1
         self.lrs.append(self.current_lr)
-        self.losses.append(loss)
+        self.losses.append(logs['batch_loss'])
 
         self.current_lr = self.min_lr + (self.max_lr - self.min_lr) * self.iter_counter / self.num_iter
         for param_group in self.optimizer.param_groups:
             param_group['lr'] = self.current_lr
 
-    def on_validation_end(self, *_):
+    def on_validation_end(self, _):
         plt.figure()
         plt.plot(self.lrs, self.losses, label='LR for train batch')
         plt.legend()

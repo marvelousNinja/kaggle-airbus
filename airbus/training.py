@@ -1,12 +1,8 @@
-import numpy as np
 import torch
-import torchvision
 from tabulate import tabulate
 from tqdm import tqdm
 
 from airbus.utils import from_numpy
-from airbus.utils import to_numpy
-from airbus.utils import as_cuda
 
 def fit_model(
         model,
@@ -27,52 +23,36 @@ def fit_model(
         for func in metrics: logs[f'train_{func.__name__}'] = 0
         model.train()
         torch.set_grad_enabled(True)
-        for callback in callbacks: callback.on_train_begin()
-        for inputs, gt in tqdm(train_generator, total=num_batches):
+        for callback in callbacks: callback.on_train_begin(logs)
+        for batch in tqdm(train_generator, total=num_batches):
             if torch.cuda.is_available(): torch.cuda.empty_cache()
-            inputs, gt = from_numpy(inputs), from_numpy(gt)
+            batch = from_numpy(batch)
             optimizer.zero_grad()
-            outputs = model(inputs)
-            loss = loss_fn(outputs, gt)
+            outputs = model(batch)
+            loss = loss_fn(outputs, batch)
             loss.backward()
             optimizer.step()
             logs['train_loss'] += loss.data[0]
-            for func in metrics: logs[f'train_{func.__name__}'] += func(outputs, gt)
-            for callback in callbacks: callback.on_train_batch_end(loss.data[0])
-
+            for func in metrics: logs[f'train_{func.__name__}'] += func(outputs, batch)
+            for callback in callbacks: callback.on_train_batch_end(logs, outputs, batch)
         logs['train_loss'] /= num_batches
         for func in metrics: logs[f'train_{func.__name__}'] /= num_batches
 
         logs['val_loss'] = 0
         for func in metrics: logs[f'val_{func.__name__}'] = 0
-        all_outputs = []
-        all_gt = []
         num_batches = len(validation_generator)
         model.eval()
         torch.set_grad_enabled(False)
-        for inputs, gt in tqdm(validation_generator, total=num_batches):
+        for batch in tqdm(validation_generator, total=num_batches):
             if torch.cuda.is_available(): torch.cuda.empty_cache()
-            all_gt.append(gt)
-            inputs, gt = from_numpy(inputs), from_numpy(gt)
-            outputs = model(inputs)
-
-            logs['val_loss'] += loss_fn(outputs, gt).data[0]
-            for func in metrics: logs[f'val_{func.__name__}'] += func(outputs, gt)
-
-            if isinstance(outputs, tuple):
-                all_outputs.append(tuple(map(to_numpy, outputs)))
-            else:
-                all_outputs.append(to_numpy(outputs))
+            batch = from_numpy(batch)
+            outputs = model(batch)
+            logs['val_loss'] += loss_fn(outputs, batch).data[0]
+            for func in metrics: logs[f'val_{func.__name__}'] += func(outputs, batch)
+            for callback in callbacks: callback.on_validation_batch_end(logs, outputs, batch)
         logs['val_loss'] /= num_batches
         for func in metrics: logs[f'val_{func.__name__}'] /= num_batches
-
-        if isinstance(all_outputs[0], tuple):
-            all_outputs = list(map(np.concatenate, zip(*all_outputs)))
-        else:
-            all_outputs = np.concatenate(all_outputs)
-
-        all_gt = np.concatenate(all_gt)
-        for callback in callbacks: callback.on_validation_end(logs, all_outputs, all_gt)
+        for callback in callbacks: callback.on_validation_end(logs)
 
         epoch_rows = [['epoch', epoch]]
         for name, value in logs.items():

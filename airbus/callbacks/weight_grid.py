@@ -13,7 +13,7 @@ class WeightGrid(Callback):
         self.batch_counter = 0
         self.max_samples = max_samples
 
-    def on_train_batch_end(self, _):
+    def on_train_batch_end(self, *_):
         state_dict = self.model.state_dict(keep_vars=True)
         for layer_name, weights in reversed(state_dict.items()):
             if weights is not None and weights.grad is not None:
@@ -26,7 +26,7 @@ class WeightGrid(Callback):
                     break
         self.batch_counter += 1
 
-    def on_validation_end(self, logs, outputs, gt):
+    def on_validation_end(self, logs):
         state_dict = self.model.state_dict(keep_vars=True)
         samples_per_row = 6
         num_samples = len(self.grads)

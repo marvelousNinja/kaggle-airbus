@@ -9,7 +9,7 @@ class CyclicLR(Callback):
         self.optimizer = optimizer
         self.logger = logger
 
-    def on_train_batch_end(self, _):
+    def on_train_batch_end(self, *_):
         self.counter += 1
 
         if (self.counter // self.step_size) % 2 == 0:

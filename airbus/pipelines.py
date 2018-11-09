@@ -54,7 +54,7 @@ def train_pipeline(cache, mask_db, path):
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ChannelsFirst()
     ])(image=image, mask=mask)
-    return args['image'], args.get('mask')
+    return {'image': args['image'], 'mask': args['mask']}
 
 def validation_pipeline(cache, mask_db, path):
     image, mask = read_image_and_mask_cached(Crop(0, 0, 768, 768), cache, mask_db, path)
@@ -62,7 +62,7 @@ def validation_pipeline(cache, mask_db, path):
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ChannelsFirst()
     ])(image=image, mask=mask)
-    return args['image'], args.get('mask')
+    return {'image': args['image'], 'mask': args['mask']}
 
 def test_pipeline(path):
     image = read_image(path)
@@ -70,4 +70,4 @@ def test_pipeline(path):
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ChannelsFirst()
     ])(image=image)
-    return args['image'], None
+    return {'image': args['image']}

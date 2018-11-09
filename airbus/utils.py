@@ -81,13 +81,20 @@ def as_cuda(tensor):
     return tensor
 
 def from_numpy(obj):
+    if isinstance(obj, dict):
+        return {key: from_numpy(value) for key, value in obj.items()}
+
     if torch.cuda.is_available():
         return torch.cuda.FloatTensor(obj)
     else:
         return torch.FloatTensor(obj)
 
-def to_numpy(tensor):
-    return tensor.data.cpu().numpy()
+def to_numpy(obj):
+    if isinstance(obj, dict):
+        return {key: to_numpy(value) for key, value in obj.items()}
+    if isinstance(obj, tuple):
+        return tuple(map(to_numpy, obj))
+    return obj.data.cpu().numpy()
 
 if __name__ == '__main__':
     import pdb; pdb.set_trace()

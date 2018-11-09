@@ -23,18 +23,17 @@ from airbus.models.devilnet import Devilnet
 from airbus.training import fit_model
 from airbus.utils import as_cuda
 
-def loss_surface_fn(outputs, labels):
-    return torch.nn.functional.binary_cross_entropy_with_logits(outputs.squeeze(), labels, reduction='none')
+def pred_fn(outputs, batch):
+    return torch.sigmoid(outputs['mask'])[:, 0, :, :], batch['mask']
 
-def compute_loss(logits, labels):
-    mask_logits, image_logits = logits
-    labels = labels.clone()
-    labels[labels > 1] = 1
-    mask_presence_labels = (labels.sum(dim=(1, 2)) > 0)
-    mask_presence_indices = mask_presence_labels.nonzero().view(-1)
-    loss = torch.nn.functional.binary_cross_entropy_with_logits(image_logits, mask_presence_labels.float()[:, None])
-    if len(mask_presence_indices) > 0:
-        loss += lovasz_hinge_loss(mask_logits[mask_presence_indices], labels[mask_presence_indices])
+def compute_loss(outputs, batch):
+    true_masks = batch['mask'].clone()
+    true_masks[true_masks > 1] = 1
+    true_labels = (true_masks.sum(dim=(1, 2)) > 0)
+    true_label_indices = true_labels.nonzero().view(-1)
+    loss = torch.nn.functional.binary_cross_entropy_with_logits(outputs['presence'], true_labels.float()[:, None])
+    if len(true_label_indices) > 0:
+        loss += lovasz_hinge_loss(outputs['mask'][true_label_indices], true_masks[true_label_indices])
     return loss
 
 def fit(
@@ -74,7 +73,7 @@ def fit(
     if visualize:
         callbacks.extend([
             LearningCurve(['train_loss', 'val_loss', 'train_mean_iou', 'val_mean_iou', 'train_f2_score', 'val_f2_score'], image_logger),
-            PredictionGrid(80, image_logger, mean_iou),
+            PredictionGrid(80, image_logger, mean_iou, pred_fn),
             Histogram(image_logger, mean_iou),
             WeightGrid(model, image_logger, 32)
         ])

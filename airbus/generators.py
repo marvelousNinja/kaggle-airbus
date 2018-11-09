@@ -11,6 +11,11 @@ from airbus.utils import get_images_in
 from airbus.utils import get_mask_db
 from airbus.utils import get_fold_split
 
+def collate(batch):
+    if isinstance(batch[0], dict):
+        return {key: collate([sample[key] for sample in batch]) for key in batch[0].keys()}
+    return np.stack(batch)
+
 class DataGenerator:
     def __init__(self, records, batch_size, transform, shuffle=True, drop_last=False):
         self.records = records
@@ -32,14 +37,10 @@ class DataGenerator:
             for output in pool.imap(self.transform, self.records[start:end]):
                 batch.append(output)
                 if len(batch) >= self.batch_size:
-                    split_outputs = list(zip(*batch))
-                    yield list(map(np.stack, split_outputs))
+                    yield collate(batch)
                     batch = []
 
-        if (not self.drop_last) and len(batch) > 0:
-            split_outputs = list(zip(*batch))
-            yield list(map(np.stack, split_outputs))
-
+        if (not self.drop_last) and len(batch) > 0: yield collate(batch)
         pool.close()
 
     def __len__(self):
