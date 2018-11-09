@@ -9,10 +9,8 @@ from airbus.utils import to_numpy
 
 def mean_iou(outputs, batch, average=True):
     smooth = 1e-12
-    mask_not_present = (outputs['presence'] < 0.5).nonzero().view(-1)
     true_masks = (batch['mask'] > 0).long()
     pred_masks = torch.sigmoid(outputs['mask']).round().long()[:, 0, :, :]
-    pred_masks[mask_not_present] = 0
     intersection = (pred_masks & true_masks).sum(dim=(1, 2)).float()
     union = (pred_masks | true_masks).sum(dim=(1, 2)).float()
     values = ((intersection + smooth) / (union + smooth))
@@ -60,9 +58,7 @@ def f_score(beta, thresholds, pred_masks, gt_masks):
     return np.mean(scores)
 
 def f2_score(outputs, batch):
-    mask_not_present = (outputs['presence'] < 0.5).nonzero().view(-1)
     pred_masks = torch.sigmoid(outputs['mask']).round().long()[:, 0, :, :]
-    pred_masks[mask_not_present] = 0
     pred_instance_masks = list(map(extract_instance_masks_from_binary_mask, to_numpy(pred_masks)))
     gt_masks = list(map(lambda sample_gt: extract_instance_masks_from_labelled_mask(to_numpy(sample_gt)), batch['mask']))
     return f_score(2, [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95], pred_instance_masks, gt_masks)

@@ -29,12 +29,7 @@ def pred_fn(outputs, batch):
 def compute_loss(outputs, batch):
     true_masks = batch['mask'].clone()
     true_masks[true_masks > 1] = 1
-    true_labels = (true_masks.sum(dim=(1, 2)) > 0)
-    true_label_indices = true_labels.nonzero().view(-1)
-    loss = torch.nn.functional.binary_cross_entropy_with_logits(outputs['presence'], true_labels.float()[:, None])
-    if len(true_label_indices) > 0:
-        loss += lovasz_hinge_loss(outputs['mask'][true_label_indices], true_masks[true_label_indices])
-    return loss
+    return lovasz_hinge_loss(outputs['mask'], true_masks)
 
 def fit(
         num_epochs=100,

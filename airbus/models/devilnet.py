@@ -135,4 +135,4 @@ class Devilnet(torch.nn.Module):
             torch.nn.functional.interpolate(d5, scale_factor=16, mode='bilinear', align_corners=False)
         ], dim=1)
 
-        return {'mask': self.mask_classifier(f), 'presence': self.image_classifier(x4)}
+        return {'mask': self.mask_classifier(f)}
