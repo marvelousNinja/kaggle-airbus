@@ -10,10 +10,14 @@ def visualize_predictions(image_logger, max_samples, metrics, predictions_and_gt
 
     # TODO AS: Clean this mess up
     predictions_and_gt_ = []
+    metrics_ = []
     for i in order:
         predictions_and_gt_.append(predictions_and_gt[i])
+        metrics_.append(metrics[i])
     predictions_and_gt = predictions_and_gt_
     predictions_and_gt = predictions_and_gt[:num_samples]
+    metrics = metrics_
+    metrics = metrics[:num_samples]
     # TODO AS: End of the mess
 
     samples_per_row = 16
