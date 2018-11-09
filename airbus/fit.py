@@ -70,7 +70,7 @@ def fit(
             LearningCurve(['train_loss', 'val_loss', 'train_mean_iou', 'val_mean_iou', 'train_f2_score', 'val_f2_score'], image_logger),
             PredictionGrid(80, image_logger, mean_iou, pred_fn),
             Histogram(image_logger, mean_iou),
-            WeightGrid(model, image_logger, 32)
+            # WeightGrid(model, image_logger, 32)
         ])
 
     fit_model(

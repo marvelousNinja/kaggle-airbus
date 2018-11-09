@@ -25,7 +25,6 @@ def fit_model(
         torch.set_grad_enabled(True)
         for callback in callbacks: callback.on_train_begin(logs)
         for batch in tqdm(train_generator, total=num_batches):
-            if torch.cuda.is_available(): torch.cuda.empty_cache()
             batch = from_numpy(batch)
             optimizer.zero_grad()
             outputs = model(batch)
@@ -44,7 +43,6 @@ def fit_model(
         model.eval()
         torch.set_grad_enabled(False)
         for batch in tqdm(validation_generator, total=num_batches):
-            if torch.cuda.is_available(): torch.cuda.empty_cache()
             batch = from_numpy(batch)
             outputs = model(batch)
             logs['val_loss'] += loss_fn(outputs, batch).data[0]

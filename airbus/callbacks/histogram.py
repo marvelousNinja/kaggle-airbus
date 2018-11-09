@@ -2,7 +2,6 @@ import matplotlib.pyplot as plt
 
 from airbus.callbacks.callback import Callback
 from airbus.utils import to_numpy
-from airbus.utils import from_numpy
 
 class Histogram(Callback):
     def __init__(self, image_logger, metric_fn):
