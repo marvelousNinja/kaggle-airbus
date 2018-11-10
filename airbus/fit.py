@@ -42,7 +42,8 @@ def fit(
         visualize=False,
         num_folds=5,
         train_fold_ids=[0, 1, 2, 3],
-        validation_fold_ids=[4]
+        validation_fold_ids=[4],
+        steps_per_epoch=None
     ):
     torch.backends.cudnn.benchmark = True
     np.random.seed(1991)
@@ -82,7 +83,8 @@ def fit(
         num_epochs=num_epochs,
         logger=logger,
         callbacks=callbacks,
-        metrics=[mean_iou, f2_score]
+        metrics=[mean_iou, f2_score],
+        steps_per_epoch=steps_per_epoch
     )
 
 def prof():

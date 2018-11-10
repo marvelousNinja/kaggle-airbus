@@ -4,6 +4,10 @@ from tqdm import tqdm
 
 from airbus.utils import from_numpy
 
+def looped(generator):
+    while True:
+        yield from generator
+
 def fit_model(
         model,
         train_generator,
@@ -13,19 +17,26 @@ def fit_model(
         num_epochs,
         logger,
         callbacks=[],
-        metrics=[]
+        metrics=[],
+        steps_per_epoch=None
     ):
 
+    if steps_per_epoch is None:
+        steps_per_epoch = len(train_generator)
+
+    train_generator = looped(train_generator)
+
     for epoch in tqdm(range(num_epochs)):
-        num_batches = len(train_generator)
+        num_batches = steps_per_epoch
         logs = {}
         logs['train_loss'] = 0
         for func in metrics: logs[f'train_{func.__name__}'] = 0
         model.train()
         torch.set_grad_enabled(True)
         for callback in callbacks: callback.on_train_begin(logs)
-        for batch in tqdm(train_generator, total=num_batches):
-            batch = from_numpy(batch)
+
+        for i in tqdm(range(num_batches)):
+            batch = from_numpy(next(train_generator))
             optimizer.zero_grad()
             outputs = model(batch)
             loss = loss_fn(outputs, batch)
