@@ -6,7 +6,7 @@ class GlobalAvgPool2d(torch.nn.Module):
         return torch.nn.functional.adaptive_avg_pool2d(x, 1).view(x.shape[0], -1)
 
 class SCSEBlock(torch.nn.Module):
-    def __init__(self, in_channels, reduction=16):
+    def __init__(self, in_channels, reduction=2):
         super().__init__()
         self.channel_gate = torch.nn.Sequential(
             GlobalAvgPool2d(),
@@ -28,16 +28,16 @@ class Decoder(torch.nn.Module):
     def __init__(self, in_channels, out_channels):
         super().__init__()
         self.layers = torch.nn.Sequential(
-            torch.nn.GroupNorm(in_channels // 16, in_channels),
+            torch.nn.BatchNorm2d(in_channels),
             torch.nn.ReLU(inplace=True),
             torch.nn.Conv2d(in_channels, out_channels, 3, padding=1, bias=False),
-            torch.nn.GroupNorm(out_channels // 16, out_channels),
+            torch.nn.BatchNorm2d(out_channels),
             torch.nn.ReLU(inplace=True),
             torch.nn.Conv2d(out_channels, out_channels, 3, padding=1, bias=False)
         )
 
         self.downsampler = torch.nn.Sequential(
-            torch.nn.GroupNorm(in_channels // 16, in_channels),
+            torch.nn.BatchNorm2d(in_channels),
             torch.nn.Conv2d(in_channels, out_channels, kernel_size=1, bias=False)
         )
 
