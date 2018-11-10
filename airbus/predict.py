@@ -1,4 +1,3 @@
-import numpy as np
 import pandas as pd
 import torch
 from fire import Fire
@@ -22,13 +21,14 @@ def predict(checkpoint_path, batch_size=1, limit=None, tta=False):
     records = []
     ids = list(map(lambda path: path.split('/')[-1], get_images_in('data/test')))[:limit]
     test_generator = get_test_generator(batch_size, limit)
-    for inputs, _ in tqdm(test_generator, total=len(test_generator)):
-        inputs = from_numpy(inputs)
-        outputs = model(inputs)
+    for batch in tqdm(test_generator, total=len(test_generator)):
+        batch = from_numpy(batch)
+        outputs = model(batch)
         if tta:
-            flipped_outputs = model(inputs.flip(dims=(3,)))
-            outputs = (torch.sigmoid(outputs) + torch.sigmoid(flipped_outputs.flip(dims=(3,)))) / 2
-        masks = to_numpy(outputs[:, 0, :, :].round().long())
+            batch['image'] = batch['image'].flip(dims=(3,))
+            flipped_outputs = model(batch)
+            outputs['mask'] = (torch.sigmoid(outputs['mask']) + torch.sigmoid(flipped_outputs['mask'].flip(dims=(3,)))) / 2
+        masks = to_numpy(outputs['mask'][:, 0, :, :].round().long())
         for mask in masks:
             _id = ids.pop(0)
             instance_masks = extract_instance_masks_from_binary_mask(mask)
