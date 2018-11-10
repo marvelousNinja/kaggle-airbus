@@ -20,21 +20,15 @@ def read_image_and_mask(mask_db, path):
     mask = load_mask(mask_db, image.shape[:2], path)
     return image, mask
 
-def read_image_and_mask_cached(preproc, cache, mask_db, path):
-    if cache.get(path): return cache[path]
-    image, mask = read_image_and_mask(mask_db, path)
-    args = preproc(image=image, mask=mask)
-    cache[path] = (args.get('image').copy(), args.get('mask').copy())
-    return cache.get(path)
-
 class ChannelsFirst:
     def __call__(self, **args):
         args['image'] = channels_first(args['image'])
         return args
 
-def train_pipeline(cache, mask_db, path):
-    image, mask = read_image_and_mask_cached(Crop(0, 0, 256, 256), cache, mask_db, path)
+def train_pipeline(mask_db, path):
+    image, mask = read_image_and_mask(mask_db, path)
     args = Compose([
+        Crop(0, 0, 256, 256),
         HorizontalFlip(p=0.5),
         RandomRotate90(p=0.5),
         OneOf([
@@ -56,8 +50,8 @@ def train_pipeline(cache, mask_db, path):
     ])(image=image, mask=mask)
     return {'image': args['image'], 'mask': args['mask']}
 
-def validation_pipeline(cache, mask_db, path):
-    image, mask = read_image_and_mask_cached(Crop(0, 0, 768, 768), cache, mask_db, path)
+def validation_pipeline(mask_db, path):
+    image, mask = read_image_and_mask(mask_db, path)
     args = Compose([
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ChannelsFirst()
