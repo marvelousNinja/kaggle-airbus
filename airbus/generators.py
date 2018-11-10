@@ -1,4 +1,5 @@
-import math
+import torch
+import torchvision
 from functools import partial
 from multiprocessing.pool import ThreadPool
 
@@ -11,44 +12,16 @@ from airbus.utils import get_images_in
 from airbus.utils import get_mask_db
 from airbus.utils import get_fold_split
 
-def collate(batch):
-    if isinstance(batch[0], dict):
-        return {key: collate([sample[key] for sample in batch]) for key in batch[0].keys()}
-    return np.stack(batch)
-
-class DataGenerator:
-    def __init__(self, records, batch_size, transform, shuffle=True, drop_last=False):
-        self.records = records
-        self.batch_size = batch_size
+class ImageDataset(torch.utils.data.Dataset):
+    def __init__(self, samples, transform):
+        self.samples = samples
         self.transform = transform
-        self.shuffle = shuffle
-        self.drop_last = drop_last
-
-    def __iter__(self):
-        if self.shuffle: np.random.shuffle(self.records)
-        batch = []
-        pool = ThreadPool()
-        prefetch_size = 2000
-        num_slices = len(self.records) // prefetch_size + 1
-
-        for i in range(num_slices):
-            start = i * prefetch_size
-            end = start + prefetch_size
-            for output in pool.imap(self.transform, self.records[start:end]):
-                batch.append(output)
-                if len(batch) >= self.batch_size:
-                    yield collate(batch)
-                    batch = []
-
-        if (not self.drop_last) and len(batch) > 0: yield collate(batch)
-        pool.close()
 
     def __len__(self):
-        num_batches = len(self.records) / self.batch_size
-        if self.drop_last:
-            return math.floor(num_batches)
-        else:
-            return math.ceil(num_batches)
+        return len(self.samples)
+
+    def __getitem__(self, i):
+        return self.transform(self.samples[i])
 
 def get_validation_generator(num_folds, fold_ids, batch_size, limit=None):
     mask_db = get_mask_db('data/train_ship_segmentations_v2.csv')
@@ -56,7 +29,13 @@ def get_validation_generator(num_folds, fold_ids, batch_size, limit=None):
     image_ids = all_image_ids[np.isin(all_fold_ids, fold_ids)]
     image_paths = list(map(lambda id: f'data/train/{id}', image_ids))
     transform = partial(validation_pipeline, {}, mask_db)
-    return DataGenerator(image_paths[:limit], batch_size, transform, shuffle=False, drop_last=True)
+    dataset = ImageDataset(image_paths[:limit], transform)
+    return torch.utils.data.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=True,
+    )
 
 def get_train_generator(num_folds, fold_ids, batch_size, limit=None):
     mask_db = get_mask_db('data/train_ship_segmentations_v2.csv')
@@ -64,8 +43,20 @@ def get_train_generator(num_folds, fold_ids, batch_size, limit=None):
     image_ids = all_image_ids[np.isin(all_fold_ids, fold_ids)]
     image_paths = list(map(lambda id: f'data/train/{id}', image_ids))
     transform = partial(train_pipeline, {}, mask_db)
-    return DataGenerator(image_paths[:limit], batch_size, transform, drop_last=True)
+    dataset = ImageDataset(image_paths[:limit], transform)
+    return torch.utils.data.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=True
+    )
 
 def get_test_generator(batch_size, limit=None):
     image_paths = get_images_in('data/test')
-    return DataGenerator(image_paths[:limit], batch_size, test_pipeline, shuffle=False)
+    dataset = ImageDataset(image_paths[:limit], test_pipeline)
+    return torch.utils.data.DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=False,
+        drop_last=False
+    )

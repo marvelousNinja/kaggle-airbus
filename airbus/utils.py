@@ -85,8 +85,10 @@ def from_numpy(obj):
         return {key: from_numpy(value) for key, value in obj.items()}
 
     if torch.cuda.is_available():
+        if isinstance(obj, torch.Tensor): return obj.float().cuda(non_blocking=True)
         return torch.cuda.FloatTensor(obj)
     else:
+        if isinstance(obj, torch.Tensor): return obj.float()
         return torch.FloatTensor(obj)
 
 def to_numpy(obj):
