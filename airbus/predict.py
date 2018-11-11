@@ -28,6 +28,8 @@ def predict(checkpoint_path, batch_size=1, limit=None, tta=False):
             batch['image'] = batch['image'].flip(dims=(3,))
             flipped_outputs = model(batch)
             outputs['mask'] = (torch.sigmoid(outputs['mask']) + torch.sigmoid(flipped_outputs['mask'].flip(dims=(3,)))) / 2
+        else:
+            outputs['mask'] = torch.sigmoid(outputs['mask'])
         masks = to_numpy(outputs['mask'][:, 0, :, :].round().long())
         for mask in masks:
             _id = ids.pop(0)
