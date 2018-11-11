@@ -6,8 +6,7 @@ import pandas as pd
 import torch
 from scipy import ndimage
 
-def get_fold_split(mask_db, num_folds, drop_duplicates=True, drop_empty=True, validation=False):
-    # TODO AS: Utilize non-empty images
+def get_fold_split(mask_db, num_folds):
     np.random.seed(1991)
     location_db = pd.read_csv('data/location_ids_v2.csv')
     db = pd.merge(mask_db, location_db, left_on='ImageId', right_on='ImageId')
@@ -15,22 +14,7 @@ def get_fold_split(mask_db, num_folds, drop_duplicates=True, drop_empty=True, va
     fold_ids = np.random.randint(0, num_folds, len(location_ids))
     mapping = dict(zip(location_ids, fold_ids))
     db['FoldId'] = db['BigImageId'].map(mapping)
-
-    if validation:
-        db = db.drop_duplicates('BigImageId')
-        with_ships = db[db['EncodedPixels'].notnull()]
-        without_ships = db[db['EncodedPixels'].isnull()]
-        db = pd.concat([with_ships, without_ships.sample(int(len(with_ships) * 1.08))])
-        db = db.sample(frac=1)
-        return db['ImageId'].values, db['FoldId'].values
-
-    if drop_duplicates:
-        db = db.drop_duplicates(['ImageId'])
-    if drop_empty:
-        db = db[db['EncodedPixels'].notnull()]
-
     db = db.sample(frac=1)
-
     return db['ImageId'].values, db['FoldId'].values
 
 def get_images_in(path):

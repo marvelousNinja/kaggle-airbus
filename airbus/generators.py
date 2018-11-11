@@ -25,7 +25,7 @@ class ImageDataset(torch.utils.data.Dataset):
 
 def get_validation_generator(num_folds, fold_ids, batch_size, limit=None):
     mask_db = get_mask_db('data/train_ship_segmentations_v2.csv')
-    all_image_ids, all_fold_ids = get_fold_split(mask_db, num_folds, validation=True)
+    all_image_ids, all_fold_ids = get_fold_split(mask_db, num_folds)
     image_ids = all_image_ids[np.isin(all_fold_ids, fold_ids)]
     image_paths = list(map(lambda id: f'data/train/{id}', image_ids))
     transform = partial(validation_pipeline, mask_db)
