@@ -37,10 +37,21 @@ class RandomCropWithBbox:
         max_height, max_width, _ = args['image'].shape
         min_row, min_col, max_row, max_col = np.random.choice(regions).bbox
 
-        boundary_min_row = max(max_row - self.height, 0)
-        boundary_max_row = min(min_row + self.height, max_height)
-        boundary_min_col = max(max_col - self.width, 0)
-        boundary_max_col = min(min_col + self.width, max_width)
+        bbox_height = max_row - min_row
+        if bbox_height >= self.height:
+            boundary_min_row = min_row
+            boundary_max_row = max_row
+        else:
+            boundary_min_row = max(max_row - self.height, 0)
+            boundary_max_row = min(min_row + self.height, max_height)
+
+        bbox_width = max_col - min_col
+        if bbox_width >= self.width:
+            boundary_min_col = min_col
+            boundary_max_col = max_col
+        else:
+            boundary_min_col = max(max_col - self.width, 0)
+            boundary_max_col = min(min_col + self.width, max_width)
 
         return Compose([
             Crop(boundary_min_col, boundary_min_row, boundary_max_col, boundary_max_row),
