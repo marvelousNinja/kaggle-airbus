@@ -6,8 +6,8 @@ from airbus.callbacks.callback import Callback
 from airbus.utils import to_numpy
 
 def confusion_matrix(pred_labels, true_labels, labels):
-    pred_labels = pred_labels.reshape(-1)
-    true_labels = true_labels.reshape(-1)
+    pred_labels = np.array(pred_labels)
+    true_labels = np.array(true_labels)
     columns = [list(map(lambda label: f'Pred {label}', labels))]
     for true_label in labels:
         counts = []
@@ -32,8 +32,8 @@ class ConfusionMatrix(Callback):
         self.gt = []
 
     def on_validation_batch_end(self, _, outputs, batch):
-        self.preds.extend(to_numpy(torch.sigmoid(outputs['has_ships']).round().long()))
-        self.gt.extend(to_numpy(batch['has_ships']))
+        self.preds.extend(to_numpy(torch.sigmoid(outputs['has_ships']).round().long()).reshape(-1))
+        self.gt.extend(to_numpy(batch['has_ships']).reshape(-1))
 
     def on_validation_end(self, _):
         self.logger(confusion_matrix(self.preds, self.gt, self.labels))

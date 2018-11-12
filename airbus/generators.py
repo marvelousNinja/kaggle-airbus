@@ -6,6 +6,7 @@ from multiprocessing.pool import ThreadPool
 import numpy as np
 
 from airbus.pipelines import test_pipeline
+from airbus.pipelines import test_classification_pipeline
 from airbus.pipelines import train_pipeline
 from airbus.pipelines import train_classification_pipeline
 from airbus.pipelines import validation_pipeline
@@ -69,9 +70,13 @@ def get_train_generator(num_folds, fold_ids, batch_size, limit=None, classificat
         pin_memory=True
     )
 
-def get_test_generator(batch_size, limit=None):
+def get_test_generator(batch_size, limit=None, classification=False):
     image_paths = get_images_in('data/test')
-    dataset = ImageDataset(image_paths[:limit], test_pipeline)
+    if classification:
+        transform = test_classification_pipeline
+    else:
+        transform = test_pipeline
+    dataset = ImageDataset(image_paths[:limit], transform)
     num_workers = 16 if torch.cuda.is_available() else 0
     return torch.utils.data.DataLoader(
         dataset,

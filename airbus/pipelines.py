@@ -135,3 +135,12 @@ def test_pipeline(path):
         ChannelsFirst()
     ])(image=image)
     return {'image': args['image']}
+
+def test_classification_pipeline(path):
+    image = read_image(path)
+    args = Compose([
+        Resize(224, 224),
+        Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        ChannelsFirst()
+    ])(image=image)
+    return {'image': args['image']}
