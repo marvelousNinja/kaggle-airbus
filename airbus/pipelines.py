@@ -3,7 +3,7 @@ import numpy as np
 from skimage.measure import regionprops
 
 from albumentations import (Blur, Compose, Crop, GaussNoise,
-                            HorizontalFlip, MedianBlur,
+                            HorizontalFlip, MedianBlur, Resize,
                             MotionBlur, Normalize, OneOf,
                             RandomBrightness, RandomGamma, RandomSizedCrop, RandomCrop,
                             RandomRotate90, ShiftScaleRotate)
@@ -57,6 +57,43 @@ class RandomCropWithBbox:
             Crop(boundary_min_col, boundary_min_row, boundary_max_col, boundary_max_row),
             RandomCrop(self.height, self.width)
         ])(**args)
+
+class LabelShipPresence:
+    def __call__(self, **args):
+        args['has_ships'] = 1 if args['mask'].max() > 0 else 0
+        return args
+
+def train_classification_pipeline(mask_db, path):
+    image, mask = read_image_and_mask(mask_db, path)
+    args = Compose([
+        Resize(224, 224),
+        HorizontalFlip(p=0.5),
+        RandomRotate90(p=0.5),
+        GaussNoise(p=0.2),
+        OneOf([
+            RandomBrightness(limit=0.2),
+            RandomGamma(),
+        ], p=0.5),
+        OneOf([
+            Blur(),
+            MedianBlur(),
+            MotionBlur()
+        ], p=0.2),
+        Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        LabelShipPresence(),
+        ChannelsFirst()
+    ])(image=image, mask=mask)
+    return {'image': args['image'], 'has_ships': args['has_ships']}
+
+def validation_classification_pipeline(mask_db, path):
+    image, mask = read_image_and_mask(mask_db, path)
+    args = Compose([
+        Resize(224, 224),
+        Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
+        LabelShipPresence(),
+        ChannelsFirst()
+    ])(image=image, mask=mask)
+    return {'image': args['image'], 'has_ships': args['has_ships']}
 
 def train_pipeline(mask_db, path):
     image, mask = read_image_and_mask(mask_db, path)
