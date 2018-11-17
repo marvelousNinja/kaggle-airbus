@@ -42,15 +42,17 @@ def decode_rle(shape, encoded_mask):
     mask = np.clip(mask, a_min=0, a_max=2)
     return mask.reshape(shape).T
 
-def extract_instance_masks_from_binary_mask(binary_mask):
+def extract_instance_masks_from_soft_mask(soft_mask):
+    soft_mask = soft_mask.copy()
+    binary_mask = soft_mask.round().astype(np.uint8)
     masks = []
     labelled_mask = ndimage.label(binary_mask)[0]
     for label in np.unique(labelled_mask):
         if label == 0: continue
         mask = np.zeros(labelled_mask.shape)
         mask[labelled_mask == label] = 1
-        area = mask.sum()
-        if area >= 50: masks.append(mask)
+        area = soft_mask[labelled_mask == label].sum()
+        if area >= 37: masks.append(mask)
     return masks
 
 def extract_instance_masks_from_labelled_mask(labelled_mask):
