@@ -36,6 +36,7 @@ python-telegram-bot==10.1.0
 pytz==2018.5
 PyWavelets==0.5.2
 requests==2.19.1
+rope==0.11.0
 scikit-image==0.14.0
 scipy==1.1.0
 six==1.11.0
@@ -43,6 +44,7 @@ tabulate==0.8.2
 telegram-send==0.20
 toolz==0.9.0
 torch==0.4.1
+torch-nightly==1.0.0.dev20181117
 torchvision==0.2.1
 tqdm==4.24.0
 typed-ast==1.1.0
