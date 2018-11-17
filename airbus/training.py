@@ -42,8 +42,8 @@ def fit_model(
             loss = loss_fn(outputs, batch)
             loss.backward()
             optimizer.step()
-            logs['train_loss'] += loss.data[0]
-            logs['batch_loss'] = loss.data[0]
+            logs['train_loss'] += loss.item()
+            logs['batch_loss'] = loss.item()
             for func in metrics: logs[f'train_{func.__name__}'] += func(outputs, batch)
             for callback in callbacks: callback.on_train_batch_end(logs, outputs, batch)
 
@@ -59,7 +59,7 @@ def fit_model(
         for batch in tqdm(validation_generator, total=num_batches):
             batch = from_numpy(batch)
             outputs = model(batch)
-            logs['val_loss'] += loss_fn(outputs, batch).data[0]
+            logs['val_loss'] += loss_fn(outputs, batch).item()
             for func in metrics: logs[f'val_{func.__name__}'] += func(outputs, batch)
             for callback in callbacks: callback.on_validation_batch_end(logs, outputs, batch)
         logs['val_loss'] /= num_batches
