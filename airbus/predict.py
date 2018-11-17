@@ -20,7 +20,6 @@ def flip_image_batch(image_batch):
 def rotate_image_batch(image_batch, k):
     return image_batch.rot90(k=k, dims=(2,3))
 
-import matplotlib; matplotlib.use('agg')
 def predict(checkpoint_path, batch_size=1, limit=None, tta=False):
     model = load_checkpoint(checkpoint_path)
     model = as_cuda(model)

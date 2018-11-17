@@ -3,7 +3,7 @@ from itertools import product
 import numpy as np
 import torch
 
-from airbus.utils import extract_instance_masks_from_binary_mask
+from airbus.utils import extract_instance_masks_from_soft_mask
 from airbus.utils import extract_instance_masks_from_labelled_mask
 from airbus.utils import to_numpy
 
@@ -58,7 +58,7 @@ def f_score(beta, thresholds, pred_masks, gt_masks):
     return np.mean(scores)
 
 def f2_score(outputs, batch):
-    pred_masks = torch.sigmoid(outputs['mask']).round().long()[:, 0, :, :]
-    pred_instance_masks = list(map(extract_instance_masks_from_binary_mask, to_numpy(pred_masks)))
+    pred_masks = torch.sigmoid(outputs['mask'])[:, 0, :, :]
+    pred_instance_masks = list(map(extract_instance_masks_from_soft_mask, to_numpy(pred_masks)))
     gt_masks = list(map(lambda sample_gt: extract_instance_masks_from_labelled_mask(to_numpy(sample_gt)), batch['mask']))
     return f_score(2, [0.5, 0.55, 0.6, 0.65, 0.7, 0.75, 0.8, 0.85, 0.9, 0.95], pred_instance_masks, gt_masks)
