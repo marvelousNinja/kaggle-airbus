@@ -44,7 +44,6 @@ tabulate==0.8.2
 telegram-send==0.20
 toolz==0.9.0
 torch==0.4.1
-torch-nightly==1.0.0.dev20181117
 torchvision==0.2.1
 tqdm==4.24.0
 typed-ast==1.1.0
