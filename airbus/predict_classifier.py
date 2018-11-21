@@ -6,8 +6,6 @@ from tqdm import tqdm
 from airbus.callbacks.model_checkpoint import load_checkpoint
 from airbus.generators import get_test_generator
 from airbus.utils import as_cuda
-from airbus.utils import encode_rle
-from airbus.utils import extract_instance_masks_from_binary_mask
 from airbus.utils import from_numpy
 from airbus.utils import get_images_in
 from airbus.utils import to_numpy
