@@ -17,7 +17,7 @@ from airbus.utils import to_numpy
 def flip_image_batch(image_batch):
     return image_batch.flip(dims=(3,))
 
-def predict(classifier_path, segmenter_path, directory_path='data/test', batch_size=1):
+def predict(classifier_path, segmenter_path, output_path='./data/submissions/__latest_combined.csv', directory_path='data/test', batch_size=1):
     torch.backends.cudnn.benchmark = True
     torch.set_grad_enabled(False)
 
@@ -84,7 +84,7 @@ def predict(classifier_path, segmenter_path, directory_path='data/test', batch_s
 
     image_ids, encoded_pixels = zip(*records)
     df = pd.DataFrame({'ImageId': image_ids, 'EncodedPixels': encoded_pixels})
-    df.to_csv('./data/submissions/__latest_combined.csv', index=False)
+    df.to_csv(output_path, index=False)
     inference_end = time.time()
     print('Inference Time: %0.2f Minutes'%((inference_end - inference_start)/60))
 
