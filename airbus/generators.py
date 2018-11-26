@@ -70,13 +70,12 @@ def get_train_generator(num_folds, fold_ids, batch_size, limit=None, classificat
         pin_memory=True
     )
 
-def get_test_generator(image_paths, batch_size, limit=None, classification=False):
+def get_test_generator(image_paths, batch_size, limit=None, classification=False, num_workers=0):
     if classification:
         transform = test_classification_pipeline
     else:
         transform = test_pipeline
     dataset = ImageDataset(image_paths[:limit], transform)
-    num_workers = 16 if torch.cuda.is_available() else 0
     return torch.utils.data.DataLoader(
         dataset,
         num_workers=num_workers,

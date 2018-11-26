@@ -17,7 +17,7 @@ from airbus.utils import to_numpy
 def flip_image_batch(image_batch):
     return image_batch.flip(dims=(3,))
 
-def predict(classifier_path, segmenter_path, output_path='./data/submissions/__latest_combined.csv', directory_path='data/test', batch_size=1):
+def predict(classifier_path, segmenter_path, output_path='./data/submissions/__latest_combined.csv', directory_path='data/test', batch_size=1, num_workers=0):
     torch.backends.cudnn.benchmark = True
     torch.set_grad_enabled(False)
 
@@ -35,7 +35,7 @@ def predict(classifier_path, segmenter_path, output_path='./data/submissions/__l
     all_image_paths = list(image_paths[::-1].copy())
     positive_image_paths = []
     negative_image_paths = []
-    test_generator = get_test_generator(image_paths, batch_size, limit=None, classification=True)
+    test_generator = get_test_generator(image_paths, batch_size, limit=None, classification=True, num_workers=num_workers)
     for batch in tqdm(test_generator, total=len(test_generator)):
         batch = from_numpy(batch)
         # TODO AS: TTA as a switch?
@@ -55,7 +55,7 @@ def predict(classifier_path, segmenter_path, output_path='./data/submissions/__l
                 negative_image_paths.append(all_image_paths.pop())
 
     all_image_paths = list(positive_image_paths[::-1].copy())
-    test_generator = get_test_generator(positive_image_paths, batch_size, limit=None, classification=False)
+    test_generator = get_test_generator(positive_image_paths, batch_size, limit=None, classification=False, num_workers=num_workers)
     records = []
     for batch in tqdm(test_generator, total=len(test_generator)):
         batch = from_numpy(batch)
