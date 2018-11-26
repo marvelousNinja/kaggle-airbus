@@ -70,8 +70,7 @@ def get_train_generator(num_folds, fold_ids, batch_size, limit=None, classificat
         pin_memory=True
     )
 
-def get_test_generator(batch_size, limit=None, classification=False):
-    image_paths = get_images_in('data/test')
+def get_test_generator(image_paths, batch_size, limit=None, classification=False):
     if classification:
         transform = test_classification_pipeline
     else:
