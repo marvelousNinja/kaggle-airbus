@@ -26,16 +26,25 @@ class ChannelsFirst:
         args['image'] = channels_first(args['image'])
         return args
 
+def mask_to_bbox(mask):
+    rows = np.any(mask, axis=1)
+    cols = np.any(mask, axis=0)
+    rmin, rmax = np.where(rows)[0][[0, -1]]
+    cmin, cmax = np.where(cols)[0][[0, -1]]
+    return rmin, rmax, cmin, cmax
+
 class RandomCropWithBbox:
     def __init__(self, height, width):
         self.height = height
         self.width = width
 
     def __call__(self, **args):
-        regions = regionprops(args['mask'])
-        if len(regions) < 1: return RandomCrop(self.height, self.width)(**args)
+        region_labels = np.unique(args['mask'])
+        region_labels = region_labels[region_labels > 0]
+        if len(region_labels) < 1: return RandomCrop(self.height, self.width)(**args)
         max_height, max_width, _ = args['image'].shape
-        min_row, min_col, max_row, max_col = np.random.choice(regions).bbox
+        region_label = np.random.choice(region_labels)
+        min_row, max_row, min_col, max_col = mask_to_bbox(args['mask'] == region_label)
 
         bbox_height = max_row - min_row
         if bbox_height >= self.height:
@@ -101,20 +110,21 @@ def train_pipeline(mask_db, path):
         RandomCropWithBbox(256, 256),
         HorizontalFlip(p=0.5),
         RandomRotate90(p=0.5),
-        OneOf([
-            ShiftScaleRotate(),
-            RandomSizedCrop(min_max_height=(200, 240), height=256, width=256)
-        ], p=0.2),
-        GaussNoise(p=0.2),
-        OneOf([
-            RandomBrightness(limit=0.2),
-            RandomGamma(),
-        ], p=0.5),
-        OneOf([
-            Blur(),
-            MedianBlur(),
-            MotionBlur()
-        ], p=0.2),
+        #TODO AS: Too hard for simpler networks
+        #OneOf([
+        #    ShiftScaleRotate(),
+        #    RandomSizedCrop(min_max_height=(200, 240), height=256, width=256)
+        #], p=0.2),
+        #GaussNoise(p=0.2),
+        #OneOf([
+        #    RandomBrightness(limit=0.2),
+        #    RandomGamma(),
+        #], p=0.5),
+        #OneOf([
+        #    Blur(),
+        #    MedianBlur(),
+        #    MotionBlur()
+        #], p=0.2),
         Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]),
         ChannelsFirst()
     ])(image=image, mask=mask)
